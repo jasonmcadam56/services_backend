@@ -1,0 +1,1 @@
+web: gunicorn qub_model_back.wsgi
