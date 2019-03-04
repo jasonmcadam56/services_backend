@@ -6,3 +6,5 @@ from . import consumers
 websocket_urlpatterns = [
     url(r'^ws/$', consumers.MessageConsumer),
 ]
+
+channel_routing = {}

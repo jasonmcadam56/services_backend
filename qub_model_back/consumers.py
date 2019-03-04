@@ -11,9 +11,9 @@ class MessageConsumer(WebsocketConsumer):
         pass
 
     def receive(self, text_data):
-        text_data_json = json.loads(text_data)
-        message = text_data_json['message']
+        # text_data_json = json.loads(text_data)
+        # message = text_data_json['message']
 
         self.send(text_data=json.dumps({
-            'message': message
+            'message': text_data
         }))

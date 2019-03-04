@@ -123,6 +123,16 @@ USE_TZ = True
 # settings for channels
 ASGI_APPLICATION = "routing.application"
 
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "asgi_redis.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [os.environ.get('REDIS_URL', 'redis://localhost:6379')],
+        },
+        "ROUTING": "qub_model_back.routing.channel_routing",
+    },
+}
+
 # settings for heroku
 STATIC_URL = '/static/'
 django_heroku.settings(locals())
