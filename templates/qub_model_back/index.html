@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>QUB model demo</title>
+</head>
+<script>
+
+    var socket = new WebSocket('ws://' + window.location.host + '/ws/');
+
+    socket.onopen = (e) => {
+        console.log(e)
+    };
+
+    socket.onmessage = (e) => {
+        {#var data = JSON.parse(e.data);#}
+        {#var message = data['message'];#}
+        console.log(e);
+    };
+
+    socket.onclose = (e) => {
+        console.log(e)
+    };
+
+</script>
+<body>
+index
+</body>
+</html>

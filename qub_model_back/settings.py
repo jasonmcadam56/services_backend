@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -50,7 +51,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'qub_model_back.urls'
+ROOT_URLCONF = 'urls'
 
 TEMPLATES = [
     {
@@ -119,5 +120,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
+# settings for channels
+ASGI_APPLICATION = "routing.application"
+
+# settings for heroku
 STATIC_URL = '/static/'
 django_heroku.settings(locals())
