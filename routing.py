@@ -1,13 +1,7 @@
-from channels.auth import AuthMiddlewareStack
-from channels.routing import ProtocolTypeRouter, URLRouter
-import qub_model_back.routing
+from .qub_model_back import consumers
 
-
-application = ProtocolTypeRouter({
-    # (http->django views is added by default)
-    'websocket': AuthMiddlewareStack(
-        URLRouter(
-            qub_model_back.routing.websocket_urlpatterns
-        )
-    ),
-})
+channel_routing = {
+    'websocket.connect': consumers.ws_connect,
+    'websocket.receive': consumers.ws_receive,
+    'websocket.disconnect': consumers.ws_disconnect,
+}

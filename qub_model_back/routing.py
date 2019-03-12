@@ -1,10 +1,7 @@
-# chat/routing.py
-from django.conf.urls import url
-
 from . import consumers
 
-websocket_urlpatterns = [
-    url(r'^ws/$', consumers.MessageConsumer),
-]
-
-channel_routing = {}
+channel_routing = {
+    'websocket.connect': consumers.ws_connect,
+    'websocket.receive': consumers.ws_receive,
+    'websocket.disconnect': consumers.ws_disconnect,
+}

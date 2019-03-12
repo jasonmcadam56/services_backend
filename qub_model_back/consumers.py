@@ -1,19 +1,25 @@
-# chat/consumers.py
-from channels.generic.websocket import WebsocketConsumer
-import json
+from channels import Group
+from channels.sessions import channel_session
 
 
-class MessageConsumer(WebsocketConsumer):
-    def connect(self):
-        self.accept()
+@channel_session
+def ws_connect(message):
+    print('connected')
+    return
 
-    def disconnect(self, close_code):
-        pass
+@channel_session
+def ws_recieve(message):
+    print('received')
+    return
 
-    def receive(self, text_data):
-        # text_data_json = json.loads(text_data)
-        # message = text_data_json['message']
+@channel_session
+def ws_receive(message):
+    print('received')
+    return
 
-        self.send(text_data=json.dumps({
-            'message': text_data
-        }))
+
+@channel_session
+def ws_disconnect(message):
+    print("disconnected")
+    return
+
