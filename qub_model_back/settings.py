@@ -118,19 +118,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
-# settings for channels
-ASGI_APPLICATION = "routing.application"
-
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "asgi_redis.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [os.environ.get('REDIS_URL', 'redis://localhost:6379')],
-        },
-        "ROUTING": "qub_model_back.routing.channel_routing",
-    },
-}
-
 # settings for heroku
 STATIC_URL = '/static/'
 django_heroku.settings(locals())
+
+# settings for front end service
+FRONT_END_WS_URL = 'ws://localhost:5000/'
