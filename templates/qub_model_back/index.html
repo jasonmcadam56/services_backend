@@ -4,16 +4,6 @@
     <meta charset="UTF-8">
     <title>QUB model demo</title>
 </head>
-<script>
-
-    var ws_node = new WebSocket('{{ FRONT_END_WS_URL }}');
-    {#var ws_node = new WebSocket({{ protocol }}'://' + window.location.hostname + {{ port }} + '/');#}
-
-    ws_node.onopen = (e) => {
-        console.log(e)
-    };
-
-</script>
 <body>
 
     <h1>Send message:</h1>

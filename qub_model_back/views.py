@@ -9,9 +9,7 @@ http = PoolManager()
 
 def index(request):
 
-    context = {
-        'FRONT_END_WS_URL': settings.FRONT_END_WS_URL,
-    }
+    context = {}
 
     if request.method == 'POST':
         res = http.request('POST', settings.FRONT_END_URL, fields={

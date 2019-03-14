@@ -124,4 +124,3 @@ django_heroku.settings(locals())
 
 # settings for front end service
 FRONT_END_URL = 'http://localhost:5000/'
-FRONT_END_WS_URL = 'ws://localhost:5000/'
