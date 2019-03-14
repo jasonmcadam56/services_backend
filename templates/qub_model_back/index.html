@@ -6,24 +6,26 @@
 </head>
 <script>
 
-    var socket = new WebSocket('ws://' + window.location.host + '/ws/');
+    var ws_node = new WebSocket('{{ FRONT_END_WS_URL }}');
+    {#var ws_node = new WebSocket({{ protocol }}'://' + window.location.hostname + {{ port }} + '/');#}
 
-    socket.onopen = (e) => {
-        console.log(e)
-    };
-
-    socket.onmessage = (e) => {
-        {#var data = JSON.parse(e.data);#}
-        {#var message = data['message'];#}
-        console.log(e);
-    };
-
-    socket.onclose = (e) => {
+    ws_node.onopen = (e) => {
         console.log(e)
     };
 
 </script>
 <body>
-index
+
+    <h1>Send message:</h1>
+
+    <form action="/" method="post">
+        {% csrf_token %}
+        <label for="message">Message: </label>
+        <input id="message" type="text" name="message">
+        <input type="submit" value="shoot">
+    </form>
+
+    <h2>{{ STATUS_CODE }}</h2>
+
 </body>
 </html>
