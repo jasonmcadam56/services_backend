@@ -123,4 +123,7 @@ STATIC_URL = '/static/'
 django_heroku.settings(locals())
 
 # settings for front end service
-FRONT_END_URL = 'http://localhost:5000/'
+if os.environ['QUB_MODEL_DEMO_MODE'] == 'PRODUCTION':
+    FRONT_END_URL = 'https://qub-model-demo.herokuapp.com/'
+else:
+    FRONT_END_URL = 'http://localhost:5000/'

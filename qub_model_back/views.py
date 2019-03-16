@@ -12,9 +12,20 @@ def index(request):
     context = {}
 
     if request.method == 'POST':
-        res = http.request('POST', settings.FRONT_END_URL, fields={
-            'message': request.POST.get('message')
-        })
-        context['STATUS_CODE'] = res.status
+        http_post(settings.FRONT_END_URL, {'message': request.POST['message']}, context)
 
     return render(request, 'qub_model_back/index.html', context)
+
+
+def http_post(url, data, context):
+
+    body = json.dumps(data)
+    body = body.encode('utf-8')
+
+    res = http.request('POST',
+                       url,
+                       body=body,
+                       headers={'Content-Type': 'application/json'}
+                       )
+
+    context['STATUS_CODE'] = res.status
