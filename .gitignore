@@ -1,0 +1,8 @@
+venv/*
+venv
+.idea/workspace.xml
+__pycache__/*
+db.sqlite3
+qub_model_back/__pycache__/*
+venv3.6/*
+
