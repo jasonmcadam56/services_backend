@@ -10,8 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
-import django_heroku
 import os
+
+import django_heroku
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -118,6 +119,16 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
+# settings for async workers
+if os.environ.get('QUB_MODEL_DEMO_MODE') == 'PRODUCTION':
+    BROKER_URL = os.environ['REDIS_URL']
+    CELERY_RESULT_BACKEND = os.environ['REDIS_URL']
+else:
+    BROKER_URL = 'redis://localhost:6379'
+    CELERY_RESULT_BACKEND = 'redis://localhost:6379'
+
+
+
 # settings for heroku
 STATIC_URL = '/static/'
 django_heroku.settings(locals())
@@ -127,3 +138,8 @@ if os.environ.get('QUB_MODEL_DEMO_MODE') == 'PRODUCTION':
     FRONT_END_URL = 'https://qub-model-demo.herokuapp.com/'
 else:
     FRONT_END_URL = 'http://localhost:5000/'
+
+# model settings
+DATASETS = os.listdir('qub_model_back/datasets')
+NNMODELS = os.listdir('qub_model_back/nnmodels')
+NNTYPES = ['cnn']

@@ -1,21 +1,44 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/html">
 <head>
     <meta charset="UTF-8">
     <title>QUB model demo</title>
 </head>
 <body>
 
-    <h1>Send message:</h1>
+    <h1>Test run:</h1>
 
     <form action="/" method="post">
         {% csrf_token %}
-        <label for="message">Message: </label>
-        <input id="message" type="text" name="message">
-        <input type="submit" value="shoot">
-    </form>
 
-    <h2>{{ STATUS_CODE }}</h2>
+        <label for="nn_model">Network: </label>
+        <select name="nn_model">
+            {% for nn_model in nn_models %}
+                <option value="{{ nn_model }}">{{ nn_model }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="nn_type">Type: </label>
+        <select name="nn_type">
+            {% for nn_type in nn_types %}
+                <option value="{{ nn_type }}">{{ nn_type }}</option>
+            {% endfor %}
+        </select>
+        <br/>
+        <br/>
+
+        <input type="hidden" name="run_type" value="test">
+
+        <label for="dataset">Dataset: </label>
+        <select name="dataset">
+            {% for set in datasets %}
+                <option value="{{ set }}">{{ set }}</option>
+            {% endfor %}
+        </select>
+        <br/>
+
+        <input type="submit" value="test">
+    </form>
 
 </body>
 </html>

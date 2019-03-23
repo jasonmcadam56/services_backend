@@ -1,18 +1,27 @@
-from django.shortcuts import redirect, render
-from django.conf import settings
-from django.utils.safestring import mark_safe # used to fire off json
 import json
+import os
+
+from django.conf import settings
+from django.shortcuts import render
 from urllib3 import PoolManager
+
+from qub_model_back.tasks import run
 
 http = PoolManager()
 
 
 def index(request):
 
-    context = {}
+    context = {
+        'datasets': settings.DATASETS,
+        'nn_models': settings.NNMODELS,
+        'nn_types': settings.NNTYPES
+    }
 
     if request.method == 'POST':
-        http_post(settings.FRONT_END_URL, {'message': request.POST['message']}, context)
+        args = parse_args(request.POST)
+        print(args)
+        run(args)
 
     return render(request, 'qub_model_back/index.html', context)
 
@@ -29,3 +38,21 @@ def http_post(url, data, context):
                        )
 
     context['STATUS_CODE'] = res.status
+
+
+def parse_args(data):
+
+    args = []
+
+    if data.get('run_type') == 'test':
+        args.append('--test')
+        args.append('--modelLoc=={}'.format(os.path.abspath('qub_model_back/nnmodels/{}'.format(data.get('nn_model')))))
+        args.append('--data={}'.format(os.path.abspath('qub_model_back/datasets/{}'.format(data.get('dataset')))))
+        args.append('--type={}'.format(data.get('nn_type')))
+    else:  # train
+        pass
+        # args.append('--type={}'.format(data.get('nn_type')))
+
+    args.append('-v')
+
+    return args

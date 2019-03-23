@@ -1,6 +1,14 @@
+import celery
 from EyeTrack import runner
+from django.conf import settings
+
+app = celery.Celery('EyeTrack')
+
+app.conf.update(BROKER_URL=settings.BROKER_URL,
+                CELERY_RESULT_BACKEND=settings.CELERY_RESULT_BACKEND)
 
 
+@app.task
 def run(args):
     """
     :param args (list):
