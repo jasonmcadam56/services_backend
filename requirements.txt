@@ -8,7 +8,7 @@ constantly==15.1.0
 dj-database-url==0.5.0
 Django==2.1.7
 django-heroku==0.3.1
--e git+https://gitlab.eeecs.qub.ac.uk/csc3032-1819/csc3032-1819-qubmeninvens.git@583c5db909f0765a9325da47a1cb20a4cf33d2c2#egg=EyeTrack&subdirectory=model
+dependencies/Model
 gunicorn==19.9.0
 hyperlink==18.0.0
 idna==2.8
