@@ -39,6 +39,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'backend_service',
+    'rest_framework'
 ]
 
 MIDDLEWARE = [
@@ -140,6 +142,4 @@ else:
     FRONT_END_URL = 'http://localhost:5000/'
 
 # model settings
-DATASETS = os.listdir('qub_model_back/datasets')
-NNMODELS = os.listdir('qub_model_back/nnmodels')
 NNTYPES = ['cnn']

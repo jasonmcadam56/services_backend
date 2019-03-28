@@ -9,6 +9,7 @@ dj-database-url==0.5.0
 Django==2.1.7
 django-heroku==0.3.1
 dependencies/Model
+djangorestframework==3.9.2
 gunicorn==19.9.0
 hyperlink==18.0.0
 idna==2.8

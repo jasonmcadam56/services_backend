@@ -7,7 +7,7 @@ class Modelserializer(serializers.Serializer):
     id = serializers.UUIDField(read_only=True)
     name = serializers.CharField(max_length=20)
 
-    file = serializers.FileField()
+    file_path = serializers.CharField(max_length=100)
     uploaded = serializers.DateField()
     modified = serializers.DateField()
 
@@ -19,7 +19,7 @@ class DataSetserializer(serializers.Serializer):
     id = serializers.UUIDField(read_only=True)
     name = serializers.CharField(max_length=20)
 
-    file = serializers.FileField()
+    file_path = serializers.CharField(max_length=100)
     uploaded = serializers.DateField()
     modified = serializers.DateField()
 
