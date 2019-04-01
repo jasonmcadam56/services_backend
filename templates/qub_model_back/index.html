@@ -6,38 +6,41 @@
 </head>
 <body>
 
-    <h1>Test run:</h1>
+    <h1>QUB Eye Track</h1>
 
-    <form action="/" method="post">
+    <h2>Train model:</h2>
+    <form action="/model/" method="post">
         {% csrf_token %}
+        <label for="name">Name </label>
+        <input name="name" type="text" maxlength="20" required/>
 
-        <label for="nn_model">Network: </label>
-        <select name="nn_model">
-            {% for nn_model in nn_models %}
-                <option value="{{ nn_model }}">{{ nn_model }}</option>
+        <label for="type">Type </label>
+        <select name="type" required>
+            {% for type in nn_types %}
+                <option value="{{ type.1 }}">{{ type.1 }}</option>
             {% endfor %}
         </select>
 
-        <label for="nn_type">Type: </label>
-        <select name="nn_type">
-            {% for nn_type in nn_types %}
-                <option value="{{ nn_type }}">{{ nn_type }}</option>
+        <label for="dataset_id">Dataset </label>
+        <select name="dataset_id" required>
+            {% for ds in datasets %}
+                <option value="{{ ds.id }}">{{ ds.name }}</option>
             {% endfor %}
         </select>
-        <br/>
-        <br/>
 
-        <input type="hidden" name="run_type" value="test">
+        <input type="submit" value="Train">
+    </form>
 
-        <label for="dataset">Dataset: </label>
-        <select name="dataset">
-            {% for set in datasets %}
-                <option value="{{ set }}">{{ set }}</option>
-            {% endfor %}
-        </select>
-        <br/>
+    <h2>Add dataset </h2>
+    <form action="/dataset/" method="post">
+        {% csrf_token %}
+        <label for="name">Name </label>
+        <input name="name" type="text" maxlength="20"/>
 
-        <input type="submit" value="test">
+        <label for="file_path">File Path </label>
+        <input name="file_path" type="text" maxlength="200">
+
+        <input type="submit" value="add dataset">
     </form>
 
 </body>

@@ -5,7 +5,8 @@ from django.conf import settings
 from django.shortcuts import render
 from urllib3 import PoolManager
 
-from qub_model_back.tasks import run
+from backend_service.tasks import run
+from backend_service import models
 
 http = PoolManager()
 
@@ -13,15 +14,9 @@ http = PoolManager()
 def index(request):
 
     context = {
-        'datasets': settings.DATASETS,
-        'nn_models': settings.NNMODELS,
-        'nn_types': settings.NNTYPES
+        'nn_types': [t for t in models.Model.TYPE_CHOICES],
+        'datasets': [dataset for dataset in models.DataSet.objects.all()]
     }
-
-    if request.method == 'POST':
-        args = parse_args(request.POST)
-        print(args)
-        run(args)
 
     return render(request, 'qub_model_back/index.html', context)
 
@@ -39,20 +34,3 @@ def http_post(url, data, context):
 
     context['STATUS_CODE'] = res.status
 
-
-def parse_args(data):
-
-    args = []
-
-    if data.get('run_type') == 'test':
-        args.append('--test')
-        args.append('--modelLoc=={}'.format(os.path.abspath('qub_model_back/nnmodels/{}'.format(data.get('nn_model')))))
-        args.append('--data={}'.format(os.path.abspath('qub_model_back/datasets/{}'.format(data.get('dataset')))))
-        args.append('--type={}'.format(data.get('nn_type')))
-    else:  # train
-        pass
-        # args.append('--type={}'.format(data.get('nn_type')))
-
-    args.append('-v')
-
-    return args

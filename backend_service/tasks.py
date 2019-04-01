@@ -1,15 +1,9 @@
-import celery
+from qub_model_back.celery import app
 from EyeTrack import runner
-from django.conf import settings
-
-app = celery.Celery('EyeTrack')
-
-app.conf.update(BROKER_URL=settings.BROKER_URL,
-                CELERY_RESULT_BACKEND=settings.CELERY_RESULT_BACKEND)
 
 
 @app.task
-def run(args):
+def run(*args):
     """
     :param args (list):
         --type (str)    : model type ie cnn or grid         eg... '--type=cnn'
@@ -21,3 +15,15 @@ def run(args):
     """
 
     runner.main(args)
+
+@app.task
+def debug(*args, **kwargs):
+    """
+    :param args: any args
+    :param kwargs: amy kwargs
+    :return: nothing
+
+    A simple method used to check the input of a message and that celery will execute it async
+
+    """
+    print('Debug called with:\n{}\n{}'.format(args, kwargs))
