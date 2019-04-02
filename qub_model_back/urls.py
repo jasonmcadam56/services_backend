@@ -22,5 +22,6 @@ from . import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     url(r'^workers/$', views.worker, name='worker'),
+    path('workers/<slug:worker_id>/', views.worker),
     url(r'^$', views.index, name='index'),
 ]
