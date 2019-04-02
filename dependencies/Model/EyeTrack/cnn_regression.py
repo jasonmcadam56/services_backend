@@ -22,16 +22,23 @@ def shuffle(data):
 
 class Cnn_regression(object):
 
-    def __init__(self, v=False, training=True):
+    def __init__(self, v=False, training=True, re_train=False, progress_filename=''):
         """
            Set up the model with placeholders for data that will be needed in
            the train method later on.
 
            Args:
                 v (bool) : Flag for verbose mode.
+                training : Flag for training mode.
+                re_train : Flag for using a older model.
+                progress_file: The name of a progress file, if blank we will not save the file.
         """
         self.verbose = v
-        if training:
+        self.re_train = re_train
+        self.progress_filename = progress_filename
+        self.progress = bool(progress_filename)
+
+        if training and not re_train:
             # [Data ? , X_image_size, Y_image_size, 3 channels RGB]
             self.right_eye = tensorflow.placeholder(tensorflow.float32,
                                                     [None, 64, 64, 3],
@@ -47,12 +54,10 @@ class Cnn_regression(object):
             self.mask = tensorflow.placeholder(tensorflow.float32, [None, 25 * 25],
                                                name='mask')
 
-            self.postion = tensorflow.placeholder(tensorflow.float32, [None, 2],
-                                                  name='postion')
+            self.postion = tensorflow.placeholder(tensorflow.float32, [None, 2], name='postion')
 
             self.keep_prob = 0.8
             self.prediction = self.create_nets()
-
 
     def tf_conv2d_helper(self, data, weight, biases, strides=1):
         """
@@ -245,7 +250,7 @@ class Cnn_regression(object):
             # current chunk to next chunk by using list comprehension and spliting.
             yield [d[i: i + size] for d in data]
 
-    def train(self, training, valation, path='', epoch=1000):
+    def train(self, training, valation, path='', epoch=1000, retrain_path=''):
         """
             Taking a training data and valation data perform the correct amount of steps,
 
@@ -253,6 +258,7 @@ class Cnn_regression(object):
                  training (numpy.Array) : Used to replace placeholder data in the session for training.
                  valation (numpy.Array) : Used to replace placeholder data in the session for valation.
                  path (string) : Location of to save model.
+                 retrain_path (string) : path to the model to use.
 
             Raises:
 
@@ -260,46 +266,67 @@ class Cnn_regression(object):
                 TypeError   : If feed_dict keys are of an inappropriate type.
                 ValueError  : If feed_dict keys are invalid or refer to a Tensor that doesn't exist.
         """
+        realpath = os.path.dirname(os.path.realpath(__file__))
         if self.verbose:
             print('We are training now!')
         if not path:
-            path = os.path.dirname(os.path.realpath(__file__))  # Get the current path.
+            path = realpath  # Get the current path.
             if self.verbose:
                 print('Save path is {}'.format(path))
-        model_save_loc = '{}/eye_q/eyeq_model'.format(path)
-        self.saver = tensorflow.train.Saver(max_to_keep=1)
+        model_save_loc = '{}/eye_q/ccn_eyeq'.format(path)
 
-        self.mase = tensorflow.losses.mean_squared_error(self.postion, self.prediction)
-        self.optimizer = tensorflow.train.AdamOptimizer(learning_rate=1e-4, beta1=0.9, beta2=0.999, epsilon=1e-08).minimize(self.mase)
-        self.err = tensorflow.reduce_mean(
-            tensorflow.sqrt(
-                tensorflow.reduce_sum(
-                    tensorflow.squared_difference(self.prediction, self.postion), axis=1)))
-        tensorflow.summary.scalar('Error', self.err)
-        tensorflow.summary.scalar('Mean Squared Error', self.mase)
-        merged = tensorflow.summary.merge_all()
-        # if not os.path.exists(model_save_loc):
-        #     os.makedirs(model_save_loc)
+        if not self.re_train:
+            self.mase = tensorflow.losses.mean_squared_error(self.postion, self.prediction)
+            self.optimizer = tensorflow.train.AdamOptimizer(learning_rate=1e-4, beta1=0.9, beta2=0.999, epsilon=1e-08).minimize(self.mase)
+            self.err = tensorflow.reduce_mean(
+                tensorflow.sqrt(
+                    tensorflow.reduce_sum(
+                        tensorflow.squared_difference(self.prediction, self.postion), axis=1)))
+            tensorflow.summary.scalar('Error', self.err)
+            tensorflow.summary.scalar('Mean Squared Error', self.mase)
+            merged = tensorflow.summary.merge_all()
+
+            if self.verbose:
+                print('Training set {}, validation set {}'.format(training[0].shape, valation[0].shape))
+
+            tensorflow.get_collection("v_nodes")
+
+            for item in [self.right_eye, self.left_eye, self.face, self.mask, self.prediction, self.optimizer, self.postion]:
+                tensorflow.add_to_collection("v_nodes", item)
 
         best_loss = float('Inf')  # Will not know best lost until we calc it after the first run of the network.
-
-        if self.verbose:
-            print('Training set {}, validation set {}'.format(training[0].shape, valation[0].shape))
-
-        tensorflow.get_collection("v_nodes")
-
-        for item in [self.right_eye, self.left_eye, self.face, self.mask, self.prediction]:
-            tensorflow.add_to_collection("v_nodes", item)
-
         model_init = tensorflow.global_variables_initializer()
+        # Setup progress file if needed
+        if self.progress:
+            # We will save the progress files to this app's directory
+            progress_path = '{}/progress/{}.json'.format(realpath, self.progress_filename)
+            if not os.path.exists('{}/progress'.format(realpath)):
+                os.makedirs('{}/progress'.format(realpath))
 
         with tensorflow.Session() as session:
             session.run(model_init)
+
+            if self.re_train:
+                self.left_eye, self.right_eye, self.face, self.mask, self.prediction, self.optimizer, self.postion = self._load_model(retrain_path, session)
+                self.mase = tensorflow.losses.mean_squared_error(self.postion, self.prediction)
+                self.err = tensorflow.reduce_mean(
+                    tensorflow.sqrt(
+                        tensorflow.reduce_sum(
+                            tensorflow.squared_difference(self.prediction, self.postion), axis=1)))
+                tensorflow.summary.scalar('Error', self.err)
+                tensorflow.summary.scalar('Mean Squared Error', self.mase)
+                merged = tensorflow.summary.merge_all()
+
+            self.saver = tensorflow.train.Saver(max_to_keep=1)
             train_file_writer = tensorflow.summary.FileWriter(model_save_loc + '/logs/train', session.graph)
             val_file_writer = tensorflow.summary.FileWriter(model_save_loc + '/logs/test', session.graph)
 
             batches = 256  # Becareful depending on your machine higher level of batches will core dump.
-            for epoch_number in range(1, epoch):
+            epoach_start = 1
+            if self.re_train:
+                epoach_start = int(retrain_path.split('-')[1])
+
+            for epoch_number in range(epoach_start, epoch):
                 out_t_merg_err = bytes()
                 training = shuffle(training)  # Need to shuffle outside of _next_batch or it becomes very memory costly.
                 for batch_training in self._next_batch(training, batches):
@@ -316,7 +343,7 @@ class Cnn_regression(object):
                     if self.verbose:
                         correct_preds = tensorflow.equal(tensorflow.argmax(out_realp, 1), tensorflow.argmax(out_post, 1))
                         accuracy = tensorflow.reduce_sum(tensorflow.cast(correct_preds, tensorflow.float32))
-                        if epoch_number == 1:
+                        if epoch_number == epoach_start:
                             tensorflow.summary.scalar('accuracy', accuracy)
                             merged_v = tensorflow.summary.merge_all()
                         out_v_merge += session.run(merged_v, feed_dict=self._create_feed_dict(batched_valation))
@@ -327,6 +354,11 @@ class Cnn_regression(object):
                     train_file_writer.add_summary(out_t_merg_err, epoch_number)
                     if self.verbose:
                         val_file_writer.add_summary(out_v_merge, epoch_number)
+
+                if self.progress:
+                    progress_data = self.create_progress(epoch_number, epoach_start, epoch, best_loss, loss_mase)
+                    with open(progress_path, 'w+') as f:
+                        json.dump(progress_data, f)
 
                 if loss_mase < best_loss:
                     if self.verbose:
@@ -339,6 +371,25 @@ class Cnn_regression(object):
                     print('epoch {} done'.format(epoch_number))
             print('Model run done with {} epochs'.format(epoch))
             tensorflow.saved_model.simple_save(session, model_save_loc, inputs={"left_eye": self.left_eye, "right_eye": self.right_eye, "mask": self.mask, "face": self.face}, outputs={"postion": self.postion})
+
+    def create_progress(self, epoch_number, epoach_start, epoch, best_loss, loss_mase):
+        """
+            Creates the progress json for tracking progress of a model.
+
+            Args:
+                epoch_number (int): Current epoch.
+                epoach_start (int): What it started as.
+                epoch (int): Last epoach.
+                best_loss (float): The current best loss.
+                loss_mase (float): The current loss.
+        """
+        return {
+            'starting_epoach': epoach_start,
+            'current_epoach': epoch_number,
+            'final_epoach': epoch,
+            'best_loss': best_loss,
+            'current_loss': loss_mase
+        }
 
     def _create_feed_dict(self, data, val=False):
         """
@@ -410,12 +461,11 @@ class Cnn_regression(object):
             saver.restore(sess, os.path.join("./", file_path_mod))
             nodes = tensorflow.get_collection_ref("v_nodes")
 
-            if len(nodes) != 5:
-                raise ValueError('Wrong model type was looking for {} nodes got {}'.format('5', len(nodes)))
+            if len(nodes) != 7:
+                raise ValueError('Wrong model type was looking for {} nodes got {}'.format('7', len(nodes)))
 
-            self.left_eye, self.right_eye, self.face, self.mask, self.prediction = nodes
+            self.left_eye, self.right_eye, self.face, self.mask, self.prediction, self.optimizer, self.postion = nodes
 
-            self.postion = tensorflow.placeholder(tensorflow.float32, [None, 2], name='postion')
             self.err = tensorflow.reduce_mean(tensorflow.sqrt(tensorflow.reduce_sum(tensorflow.squared_difference(self.prediction, self.postion), axis=1)))
             self.mase = tensorflow.losses.mean_squared_error(self.prediction, self.postion)
             t_err, t_mase = (0, 0)
@@ -432,7 +482,16 @@ class Cnn_regression(object):
             if self.verbose:
                 print('Total accuracy {}%'.format(total_correct_preds))
 
-            return (t_err, t_mase)
+            return jdict
+
+    def _load_model(self, path, sess):
+        meta_file = path + ".meta"
+        if not os.path.exists(meta_file):
+            raise ValueError('No metadata file loaded')
+
+        saver = tensorflow.train.import_meta_graph(meta_file)
+        saver.restore(sess, os.path.join("./", path))
+        return tensorflow.get_collection_ref("v_nodes")
 
     def _record_accuracy(self, pred, post, sess):
         """

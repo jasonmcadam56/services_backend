@@ -33,12 +33,15 @@ def main(from_app=[]):
     if settings.data_arch not in data_archs:
         raise ValueError('Data architecture must be either {}'.format(data_archs))
 
+    if not settings.modelLoc and settings.retrain:
+        raise ValueError('Use of Retrain flag requires that a model location is passed in please use --modelLoc')
+
     if settings.train:
         train(settings)
     elif settings.test:
-        test(settings)
+        return test(settings)
     else:
-        print("training off")
+        return 'Invalid input'
 
 
 def process_args(args_data):
@@ -57,7 +60,8 @@ def process_args(args_data):
     parser.add_argument('-da', '--data_arch', type=str, default='eyeq', help='Data format type e.g. eyeq, mit')
     parser.add_argument('--test', '-vm', action='store_true', help='This flag will allow valdation of a model.')
     parser.add_argument('--modelLoc', '-ml', type=str, help='The location where you model is stored.')
-
+    parser.add_argument('--retrain', '-rt', action='store_true', help='Used to flag for retraining a model')
+    parser.add_argument('--progressFile', '-p', type=str, help='The name of the progress file e.g. Model-001 (Will overwrite progress files with the same name)')
     if args_data:
         return parser.parse_args(args_data)
     else:
@@ -65,12 +69,12 @@ def process_args(args_data):
 
 
 def load_metadata_mit(file_loc, val_only=False):
-
     """
         Load the data file from the users input, this is formatted to mit layout.
 
         Args:
             file_loc (str): The string of the file location.
+            val_only (bool): flag for returing only valation data.
 
         Return:
             train_data (List): List of the train values.
@@ -93,17 +97,49 @@ def load_metadata_mit(file_loc, val_only=False):
 
 
 def load_metadata_eyeq(file_loc, val_only=False):
-
     """
         Load the data file from the users input, this is formatted to eyeq layout.
 
         Args:
             file_loc (str): The string of the file location.
+            val_only (bool): flag for returing only valation data.
 
         Return:
             train_data (List): List of the train values.
             valation_data (List): List of the valation values.
     """
+    eye_data = np.load(file_loc)
+    train_data = [eye_data["train_left_eye"],
+                  eye_data['train_right_eye'],
+                  eye_data['train_face'],
+                  eye_data["train_face_mask"],
+                  np.column_stack((eye_data["train_xPos"], eye_data["train_yPos"]))]
+
+    valation_data = [eye_data["val_left_eye"],
+                     eye_data['val_right_eye'],
+                     eye_data['val_face'],
+                     eye_data["val_face_mask"],
+                     np.column_stack((eye_data["val_xPos"], eye_data["val_yPos"]))]
+
+    if val_only:
+        return valation_data
+
+    return train_data, valation_data
+
+
+def load_metadata_npza(file_loc, val_only=False):
+    """
+        Load the data file from the users input, this is formatted to npza layout.
+
+        Args:
+            file_loc (str): The string of the file location.
+            val_only (bool): flag for returing only valation data.
+
+        Return:
+            train_data (List): List of the train values.
+            valation_data (List): List of the valation values.
+    """
+
     eye_data = np.load(file_loc)
     train_data = [eye_data["train_left_eye"],
                   eye_data['train_right_eye'],
@@ -181,13 +217,16 @@ def train(settings):
     valation = format_data(valation)
 
     if settings.type.lower() == 'cnn':
-        eyeQ = Cnn_regression(settings.verbose)
+        eyeQ = Cnn_regression(settings.verbose, re_train=settings.retrain, progress_filename=settings.progressFile)
     else:
         types = 'CNN - Regression model'
         err = 'Model input {} type was not found please try one of the following: {} '.format(settings.type, types)
         raise ValueError(err)
 
-    eyeQ.train(train, valation)
+    if not settings.retrain:
+        eyeQ.train(train, valation)
+    else:
+        eyeQ.train(train, valation, retrain_path=settings.modelLoc)
     if settings.verbose:
         print('Done training model')
 
@@ -201,6 +240,9 @@ def test(settings):
 
         Raise:
             ValueError: If type is not supported by the models.
+
+        Returns:
+            (json) the prediction data.
     """
     if settings.data_arch.lower() == 'eyeq':
         valation = load_metadata_eyeq(settings.data, val_only=True)
@@ -216,9 +258,21 @@ def test(settings):
         err = 'Model input {} type was not found please try one of the following: {} '.format(settings.type, types)
         raise ValueError(err)
 
-    err, mape = eyeQ.testing(settings.modelLoc, valation)
-    print('Overall Error rate {}'.format(err))
-    print('Overall Mean absolute percentage error {}'.format(mape))
+    return eyeQ.testing(settings.modelLoc, valation)
+
+
+def get_filepaths():
+    """
+        Returns the location of all the file paths that the module uses.
+
+        Return:
+            (dict) {'File': 'path_to_file'}
+    """
+    realpath = os.path.dirname(os.path.realpath(__file__))
+    return {
+        'models': '{}/eye_q/'.format(realpath),
+        'progress_files': '{}/progress'.format(realpath)
+    }
 
 
 if __name__ == "__main__":
