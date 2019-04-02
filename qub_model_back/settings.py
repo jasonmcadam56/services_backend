@@ -145,6 +145,6 @@ else:
 # celery
 if os.environ.get('QUB_MODEL_DEMO_MODE') == 'PRODUCTION':
     # warning: this will definitely change if this app is redeployed
-    CELERY_BROKER_URL = 'redis://h:p649f08775208360cc0c7ee1cda68698f2c5a8d81bdfb7c922c0da8c97d70de27@ec2-63-35-33-111.eu-west-1.compute.amazonaws.com:28769'
+    CELERY_BROKER_URL = os.environ['REDIS_URL']
 else:
     CELERY_BROKER_URL = 'redis://localhost:6379/0'

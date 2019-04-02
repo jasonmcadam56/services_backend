@@ -1,3 +1,5 @@
+# This tasks.py is to set up the asyc workers only
+
 import os
 from celery import Celery
 

@@ -6,7 +6,7 @@ from urllib3 import PoolManager
 
 from backend_service import models
 
-from qub_model_back.celery import app
+from qub_model_back.tasks import app
 
 http = PoolManager()
 

@@ -1,4 +1,4 @@
-from qub_model_back.celery import app
+from qub_model_back.tasks import app
 from EyeTrack import runner
 
 
