@@ -1,6 +1,7 @@
 import os
 from celery import Celery
 
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'qub_model_back.settings')
 
 # set the default Django settings module for the 'celery' program.

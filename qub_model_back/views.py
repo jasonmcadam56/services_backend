@@ -1,12 +1,12 @@
 import json
-import os
 
-from django.conf import settings
 from django.shortcuts import render
+from django.http import HttpResponse
 from urllib3 import PoolManager
 
-from backend_service.tasks import run
 from backend_service import models
+
+from qub_model_back.celery import app
 
 http = PoolManager()
 
@@ -19,6 +19,14 @@ def index(request):
     }
 
     return render(request, 'qub_model_back/index.html', context)
+
+
+def worker(request):
+
+    active = app.control.inspect().active()  # returns active nodes
+    # get progress status here and append the active dir
+
+    return HttpResponse('{}'.format(active), content_type='application/json')
 
 
 def http_post(url, data, context):
