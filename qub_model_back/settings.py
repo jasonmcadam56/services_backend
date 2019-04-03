@@ -40,10 +40,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'backend_service',
-    'rest_framework'
+    'rest_framework',
+    'corsheaders'
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -148,3 +150,15 @@ if os.environ.get('QUB_MODEL_DEMO_MODE') == 'PRODUCTION':
     CELERY_BROKER_URL = os.environ['REDIS_URL']
 else:
     CELERY_BROKER_URL = 'redis://localhost:6379/0'
+
+
+# cross site security
+if os.environ.get('QUB_MODEL_DEMO_MODE') == 'PRODUCTION':
+    CORS_ORIGIN_WHITELIST = (
+        'https://qub-model-demo.herokuapp.com'  # the usual path for the deployed front end
+    )
+else:
+    CORS_ORIGIN_WHITELIST = (
+        'http://localhost:5000'  # the usual path for local node development
+    )
+
