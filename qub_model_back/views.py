@@ -33,6 +33,7 @@ def worker(request, worker_id=None):
     if worker_id == None:
         #/workers/
         content = app.control.inspect().active()
+        content = json.dumps(content)
 
     elif worker_id and request.method == 'GET':
         #/workers/<uuid>/
@@ -43,6 +44,7 @@ def worker(request, worker_id=None):
         for worker in content:
             if worker['id'] == worker_id:
                 content = worker
+                content = json.dumps(content)
                 break
 
     elif worker_id and request.method == 'POST':
