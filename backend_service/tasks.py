@@ -3,7 +3,7 @@ from EyeTrack import runner
 
 
 @app.task
-def run(*args):
+def run(*args, **kwargs):
     """
     :param args (list):
         --type (str)    : model type ie cnn or grid         eg... '--type=cnn'

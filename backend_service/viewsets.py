@@ -1,11 +1,11 @@
-from backend_service import serializers, models
+import os
+
 from rest_framework import viewsets
 from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
 
-from backend_service.tasks import run, debug
+from backend_service import serializers, models
+from backend_service.tasks import run
 
-import os
 
 class ModelViewSet(viewsets.ModelViewSet):
     """
@@ -18,6 +18,7 @@ class ModelViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         name = request.data.get('name')
         type = request.data.get('type')
+        task = request.data.get('task')
         ds_id = request.data.get('dataset_id')
 
         if len(models.Model.objects.filter(name=name)) > 0:
@@ -31,11 +32,17 @@ class ModelViewSet(viewsets.ModelViewSet):
         _args = parse_args({
             'run_type': 'train',
             'nn_type': type,
-            'dataset_location': ds.file_path
+            'dataset_location': ds.file_path,
+            'name': name
             }
         )
 
-        run.apply_async(args=_args)
+        _kwargs = {
+            "name": name,
+            "task": task,
+        }
+
+        run.apply_async(args=_args, kwargs=_kwargs)
 
         return Response('Training: {}'.format(model))
 
@@ -58,6 +65,7 @@ def parse_args(data):
         args.append('--train')
         args.append('--type={}'.format(data.get('nn_type')))
         args.append('--data={}'.format(data.get('dataset_location')))
+        args.append('-p={}'.format(data.get('name')))
 
     args.append('-v')
 

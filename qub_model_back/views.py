@@ -1,17 +1,15 @@
 import json
+from json import loads
 
-from django.shortcuts import render
+from celery.task.control import revoke
 from django.http import HttpResponse, HttpResponseBadRequest
+from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
 from urllib3 import PoolManager
 
 from backend_service import models
-
+from qub_model_back.settings import EYETRACK_PROGRESS_DIR
 from qub_model_back.tasks import app
-
-from django.views.decorators.csrf import csrf_exempt
-from celery.task.control import revoke
-
-from json import loads
 
 http = PoolManager()
 
@@ -33,6 +31,7 @@ def worker(request, worker_id=None):
     if worker_id == None:
         #/workers/
         content = app.control.inspect().active()
+        append_progress(content)
         content = json.dumps(content)
 
     elif worker_id and request.method == 'GET':
@@ -44,6 +43,7 @@ def worker(request, worker_id=None):
         for worker in content:
             if worker['id'] == worker_id:
                 content = worker
+                append_progress(content)
                 content = json.dumps(content)
                 break
 
@@ -69,6 +69,16 @@ def revoke_task(request):
     return HttpResponse(200)
 
 
+def append_progress(celery_dict, file_type='json'):
+
+    for host in celery_dict.keys():
+        for worker in celery_dict[host]:
+            meta = json.loads(worker['kwargs'].replace('\'', '"'))
+            file_path = '{}/{}.{}'.format(EYETRACK_PROGRESS_DIR, meta['name'], file_type)
+
+            with open(file_path, mode='r') as f:
+                worker['progress'] = json.loads(f.read())
+
 
 def http_post(url, data, context):
 
@@ -82,4 +92,3 @@ def http_post(url, data, context):
                        )
 
     context['STATUS_CODE'] = res.status
-

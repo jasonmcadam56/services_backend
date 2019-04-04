@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 
 import os
 
+from EyeTrack.runner import get_filepaths
+
 import django_heroku
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -123,6 +125,11 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
+# EyeTrack sub module settings
+_EYETRACK_DIRS = get_filepaths()
+EYETRACK_MODELS_DIR = _EYETRACK_DIRS['models']
+EYETRACK_PROGRESS_DIR = _EYETRACK_DIRS['progress_files']
+
 # settings for async workers
 if os.environ.get('QUB_MODEL_DEMO_MODE') == 'PRODUCTION':
     BROKER_URL = os.environ['REDIS_URL']
@@ -130,8 +137,6 @@ if os.environ.get('QUB_MODEL_DEMO_MODE') == 'PRODUCTION':
 else:
     BROKER_URL = 'redis://localhost:6379'
     CELERY_RESULT_BACKEND = 'redis://localhost:6379'
-
-
 
 # settings for heroku
 STATIC_URL = '/static/'
