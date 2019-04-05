@@ -11,17 +11,21 @@ import sys
 from argparse import ArgumentParser
 from EyeTrack.cnn_regression import Cnn_regression
 import numpy as np
+from EyeTrack import grid_classification_model
+from EyeTrack.val_to_grid import val_to_grid
 
 
 def main(from_app=[]):
     """
         Process the user input and set up the correct model and pass in the data or use a pre-trained model for processing data.
 
-        kargs:
+        kwargs:
             type    : Model type (At moment only CNN supported)
             train   : If the program should be in train mode.
             data:   : Location of the image data.
             verbose : Allow debug statments to be printed to the console.
+        Raises:
+            ValueError : If name is not only letter, if data arch isn't supported, or modelLoc is missing when using retrain.
     """
     settings = process_args(from_app)
 
@@ -29,6 +33,9 @@ def main(from_app=[]):
         print('Verbose mode is on.')
 
     data_archs = ['eyeq', 'mit']
+
+    if not settings.name.isalpha():
+        raise ValueError('Name can only be letters do not pass in numbers or symbols')
 
     if settings.data_arch not in data_archs:
         raise ValueError('Data architecture must be either {}'.format(data_archs))
@@ -59,9 +66,13 @@ def process_args(args_data):
     parser.add_argument('-v', '--verbose', action='store_true', help='Verbose print debugging lines')
     parser.add_argument('-da', '--data_arch', type=str, default='eyeq', help='Data format type e.g. eyeq, mit')
     parser.add_argument('--test', '-vm', action='store_true', help='This flag will allow valdation of a model.')
+    parser.add_argument('-e', '--epoch', type=int, default=200, help='Number of epochs to run model with')
+    parser.add_argument('-bs', '--batch_size', type=int, default=64, help='Batch Size to run model with')
     parser.add_argument('--modelLoc', '-ml', type=str, help='The location where you model is stored.')
     parser.add_argument('--retrain', '-rt', action='store_true', help='Used to flag for retraining a model')
     parser.add_argument('--progressFile', '-p', type=str, help='The name of the progress file e.g. Model-001 (Will overwrite progress files with the same name)')
+    parser.add_argument('--name', '-n', type=str, help='The name for the model, only use letters', default='eyeq')
+
     if args_data:
         return parser.parse_args(args_data)
     else:
@@ -74,11 +85,11 @@ def load_metadata_mit(file_loc, val_only=False):
 
         Args:
             file_loc (str): The string of the file location.
-            val_only (bool): flag for returing only valation data.
+            val_only (bool): flag for returing only validation data.
 
         Return:
             train_data (List): List of the train values.
-            valation_data (List): List of the valation values.
+            validation_data (List): List of the validation values.
     """
     eye_data = np.load(file_loc)
     train_data = [eye_data["train_eye_left"],
@@ -86,45 +97,62 @@ def load_metadata_mit(file_loc, val_only=False):
                   eye_data['train_face'],
                   eye_data["train_face_mask"],
                   eye_data["train_y"]]
-    valation_data = [eye_data["val_eye_left"],
+    validation_data = [eye_data["val_eye_left"],
                      eye_data['val_eye_right'],
                      eye_data['val_face'],
                      eye_data["val_face_mask"],
                      eye_data["val_y"]]
     if val_only:
-        return valation_data
-    return train_data, valation_data
+        return validation_data
+    return train_data, validation_data
 
 
-def load_metadata_eyeq(file_loc, val_only=False):
+def load_metadata_eyeq(file_loc, val_only=False, gcnn=False):
     """
         Load the data file from the users input, this is formatted to eyeq layout.
 
         Args:
             file_loc (str): The string of the file location.
-            val_only (bool): flag for returing only valation data.
+            val_only (bool): flag for returing only validation data.
+            gcnn: Boolean to check if gcnn is being used to train or test model
 
         Return:
             train_data (List): List of the train values.
-            valation_data (List): List of the valation values.
+            validation_data (List): List of the validation values.
     """
     eye_data = np.load(file_loc)
-    train_data = [eye_data["train_left_eye"],
-                  eye_data['train_right_eye'],
-                  eye_data['train_face'],
-                  eye_data["train_face_mask"],
-                  np.column_stack((eye_data["train_xPos"], eye_data["train_yPos"]))]
-
-    valation_data = [eye_data["val_left_eye"],
-                     eye_data['val_right_eye'],
-                     eye_data['val_face'],
-                     eye_data["val_face_mask"],
-                     np.column_stack((eye_data["val_xPos"], eye_data["val_yPos"]))]
-
+    if gcnn:
+        y_label_train = []
+        y_label_validation = []
+        for x in range(len(eye_data["train_xPos"])):
+            y_label_train.append((eye_data["train_xPos"][x], eye_data["train_yPos"][x]))
+        for y in range(len(eye_data["val_xPos"])):
+            y_label_validation.append((eye_data["val_xPos"][y], eye_data["val_yPos"][y]))
+        train_data = [eye_data["train_left_eye"],
+                      eye_data['train_right_eye'],
+                      eye_data['train_face'],
+                      eye_data["train_face_mask"],
+                      val_to_grid(y_label_train)]
+        validation_data = [eye_data["val_left_eye"],
+                         eye_data['val_right_eye'],
+                         eye_data['val_face'],
+                         eye_data["val_face_mask"],
+                         val_to_grid(y_label_validation)]
+    else:
+        train_data = [eye_data["train_left_eye"],
+                      eye_data['train_right_eye'],
+                      eye_data['train_face'],
+                      eye_data["train_face_mask"],
+                      np.column_stack((eye_data["train_xPos"], eye_data["train_yPos"]))]
+        validation_data = [eye_data["val_left_eye"],
+                         eye_data['val_right_eye'],
+                         eye_data['val_face'],
+                         eye_data["val_face_mask"],
+                         np.column_stack((eye_data["val_xPos"], eye_data["val_yPos"]))]
     if val_only:
-        return valation_data
-
-    return train_data, valation_data
+        return validation_data
+    else:
+        return train_data, validation_data
 
 
 def load_metadata_npza(file_loc, val_only=False):
@@ -133,11 +161,11 @@ def load_metadata_npza(file_loc, val_only=False):
 
         Args:
             file_loc (str): The string of the file location.
-            val_only (bool): flag for returing only valation data.
+            val_only (bool): flag for returing only validation data.
 
         Return:
             train_data (List): List of the train values.
-            valation_data (List): List of the valation values.
+            validation_data (List): List of the validation values.
     """
 
     eye_data = np.load(file_loc)
@@ -147,16 +175,16 @@ def load_metadata_npza(file_loc, val_only=False):
                   eye_data["train_face_mask"],
                   np.column_stack((eye_data["train_xPos"], eye_data["train_yPos"]))]
 
-    valation_data = [eye_data["val_left_eye"],
+    validation_data = [eye_data["val_left_eye"],
                      eye_data['val_right_eye'],
                      eye_data['val_face'],
                      eye_data["val_face_mask"],
                      np.column_stack((eye_data["val_xPos"], eye_data["val_yPos"]))]
 
     if val_only:
-        return valation_data
+        return validation_data
 
-    return train_data, valation_data
+    return train_data, validation_data
 
 
 def normalize(data):
@@ -209,24 +237,33 @@ def train(settings):
             ValueError: If type is not supported by the models.
     '''
     if settings.data_arch.lower() == 'eyeq':
-        train, valation = load_metadata_eyeq(settings.data)
+        if settings.type.lower() == 'gcnn':
+            train, validation = load_metadata_eyeq(settings.data, gcnn=True)
+        else:
+            train, validation = load_metadata_eyeq(settings.data)
+
     elif settings.data_arch.lower() == 'mit':
-        train, valation = load_metadata_mit(settings.data)
+        train, validation = load_metadata_mit(settings.data)
 
     train = format_data(train)
-    valation = format_data(valation)
+    validation = format_data(validation)
+    epochs = settings.epoch
+    batch_size = settings.batch_size
+    model_loc = settings.modelLoc
 
     if settings.type.lower() == 'cnn':
         eyeQ = Cnn_regression(settings.verbose, re_train=settings.retrain, progress_filename=settings.progressFile)
+    elif settings.type.lower() == 'gcnn':
+        eyeQ = grid_classification_model
     else:
-        types = 'CNN - Regression model'
+        types = 'CNN - Regression model, GCNN - Classification Model'
         err = 'Model input {} type was not found please try one of the following: {} '.format(settings.type, types)
         raise ValueError(err)
 
     if not settings.retrain:
-        eyeQ.train(train, valation)
+        eyeQ.train(train, validation, epochs=epochs, batch_size=batch_size, name=settings.name.lower())
     else:
-        eyeQ.train(train, valation, retrain_path=settings.modelLoc)
+        eyeQ.train(train, validation, retrain_path=settings.modelLoc)
     if settings.verbose:
         print('Done training model')
 
@@ -245,20 +282,26 @@ def test(settings):
             (json) the prediction data.
     """
     if settings.data_arch.lower() == 'eyeq':
-        valation = load_metadata_eyeq(settings.data, val_only=True)
-    elif settings.data_arch.lower() == 'mit':
-        valation = load_metadata_mit(settings.data, val_only=True)
+        if settings.type.lower() == 'gcnn':
+            validation = load_metadata_eyeq(settings.data, val_only=True, gcnn=True)
+        else:
+            validation = load_metadata_eyeq(settings.data, val_only=True)
 
-    valation = format_data(valation)
+    elif settings.data_arch.lower() == 'mit':
+        validation = load_metadata_mit(settings.data, val_only=True)
+
+    validation = format_data(validation)
 
     if settings.type.lower() == 'cnn':
         eyeQ = Cnn_regression(settings.verbose, False)
+    elif settings.type.lower() == 'gcnn':
+        eyeQ = grid_classification_model
     else:
-        types = 'CNN - Regression model'
+        types = 'CNN - Regression model, GCNN - Classification Model'
         err = 'Model input {} type was not found please try one of the following: {} '.format(settings.type, types)
         raise ValueError(err)
 
-    return eyeQ.testing(settings.modelLoc, valation)
+    return eyeQ.testing(settings.modelLoc, validation)
 
 
 def get_filepaths():

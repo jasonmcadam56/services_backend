@@ -28,4 +28,4 @@ setup(
         'termcolor==1.1.0',
         'Werkzeug==0.14.1',
         'tox']
-    )
+)

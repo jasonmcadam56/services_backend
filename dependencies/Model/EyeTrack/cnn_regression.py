@@ -1,4 +1,5 @@
 import tensorflow
+import shutil
 import os
 import numpy as np
 import json
@@ -11,7 +12,7 @@ def shuffle(data):
         Args:
             data - The input data that we which to shuffle.
         Returns:
-            type - explain
+            type - The input data shuffled up. 
     """
     index = np.arange(data[0].shape[0])
     np.random.shuffle(index)
@@ -235,7 +236,7 @@ class Cnn_regression(object):
     def _next_batch(self, data, size):
         """
             We need to be able to proccess the data however creating a new list is very compute heavy
-            and this method is called for every loop of both training and valation so we need to reduce
+            and this method is called for every loop of both training and validation so we need to reduce
             compute time. We return a genator here instead so it can be process when needed.
             Args:
                 data (numpy): Data to process.
@@ -250,13 +251,13 @@ class Cnn_regression(object):
             # current chunk to next chunk by using list comprehension and spliting.
             yield [d[i: i + size] for d in data]
 
-    def train(self, training, valation, path='', epoch=1000, retrain_path=''):
+    def train(self, training, validation, path='', epochs=1000, retrain_path='', batch_size=256, name='eyeq'):
         """
-            Taking a training data and valation data perform the correct amount of steps,
+            Taking a training data and validation data perform the correct amount of steps,
 
             Args:
                  training (numpy.Array) : Used to replace placeholder data in the session for training.
-                 valation (numpy.Array) : Used to replace placeholder data in the session for valation.
+                 validation (numpy.Array) : Used to replace placeholder data in the session for validation.
                  path (string) : Location of to save model.
                  retrain_path (string) : path to the model to use.
 
@@ -273,7 +274,8 @@ class Cnn_regression(object):
             path = realpath  # Get the current path.
             if self.verbose:
                 print('Save path is {}'.format(path))
-        model_save_loc = '{}/eye_q/ccn_eyeq'.format(path)
+        model_name = 'ccn_{}'.format(name)
+        model_save_loc = '{}/eye_q/{}'.format(path, model_name)
 
         if not self.re_train:
             self.mase = tensorflow.losses.mean_squared_error(self.postion, self.prediction)
@@ -287,7 +289,7 @@ class Cnn_regression(object):
             merged = tensorflow.summary.merge_all()
 
             if self.verbose:
-                print('Training set {}, validation set {}'.format(training[0].shape, valation[0].shape))
+                print('Training set {}, validation set {}'.format(training[0].shape, validation[0].shape))
 
             tensorflow.get_collection("v_nodes")
 
@@ -321,15 +323,16 @@ class Cnn_regression(object):
             train_file_writer = tensorflow.summary.FileWriter(model_save_loc + '/logs/train', session.graph)
             val_file_writer = tensorflow.summary.FileWriter(model_save_loc + '/logs/test', session.graph)
 
-            batches = 256  # Becareful depending on your machine higher level of batches will core dump.
-            epoach_start = 1
+            batch_size = 256  # Becareful depending on your machine higher level of batch_size will core dump.
+            epoch_start = 1
+            last_epoch = 1
             if self.re_train:
-                epoach_start = int(retrain_path.split('-')[1])
+                epoch_start = int(retrain_path.split('-')[1])
 
-            for epoch_number in range(epoach_start, epoch):
+            for epoch_number in range(epoch_start, epochs):
                 out_t_merg_err = bytes()
                 training = shuffle(training)  # Need to shuffle outside of _next_batch or it becomes very memory costly.
-                for batch_training in self._next_batch(training, batches):
+                for batch_training in self._next_batch(training, batch_size):
                     l_merg, l_err, l_mass = self._training(session, batch_training, [merged, self.err, self.mase], True)
                     out_t_merg_err += l_merg
 
@@ -337,16 +340,16 @@ class Cnn_regression(object):
                 loss_mase = 0
                 out_v_merge = bytes()
                 out_merg = bytes()
-                for batched_valation in self._next_batch(valation, batches):
-                    l_merg, out_post, out_realp, mase, = self._training(session, batched_valation, [merged, self.postion, self.prediction, self.mase])
+                for batched_validation in self._next_batch(validation, batch_size):
+                    l_merg, out_post, out_realp, mase, = self._training(session, batched_validation, [merged, self.postion, self.prediction, self.mase])
                     loss_mase += mase
                     if self.verbose:
                         correct_preds = tensorflow.equal(tensorflow.argmax(out_realp, 1), tensorflow.argmax(out_post, 1))
                         accuracy = tensorflow.reduce_sum(tensorflow.cast(correct_preds, tensorflow.float32))
-                        if epoch_number == epoach_start:
+                        if epoch_number == epoch_start:
                             tensorflow.summary.scalar('accuracy', accuracy)
                             merged_v = tensorflow.summary.merge_all()
-                        out_v_merge += session.run(merged_v, feed_dict=self._create_feed_dict(batched_valation))
+                        out_v_merge += session.run(merged_v, feed_dict=self._create_feed_dict(batched_validation))
                         out_merg += l_merg
                 # Reduce recording if no progress is made so it will scale down to every 2 epochs (handy for larger runs)
                 if (epoch_number % 2 == 0) or (loss_mase < best_loss):
@@ -356,42 +359,57 @@ class Cnn_regression(object):
                         val_file_writer.add_summary(out_v_merge, epoch_number)
 
                 if self.progress:
-                    progress_data = self.create_progress(epoch_number, epoach_start, epoch, best_loss, loss_mase)
+                    progress_data = self.create_progress(epoch_number, epoch_start, epochs, best_loss, loss_mase)
                     with open(progress_path, 'w+') as f:
                         json.dump(progress_data, f)
 
                 if loss_mase < best_loss:
+                    if self.progress:
+                        best_stats = self.create_progress(epoch_number, epoch_start, epochs, best_loss, loss_mase, write_update=False)
                     if self.verbose:
                         print('New best loss {} old one was {}, saving new model checkpoint.'.format(loss_mase, best_loss))
                         # print('Mase loss for this model {}'.format(loss_mase))
                     self.saver.save(session, model_save_loc, global_step=epoch_number)
                     best_loss = loss_mase
-
+                    last_epoch = epoch_number
                 if self.verbose:
                     print('epoch {} done'.format(epoch_number))
-            print('Model run done with {} epochs'.format(epoch))
-            tensorflow.saved_model.simple_save(session, model_save_loc, inputs={"left_eye": self.left_eye, "right_eye": self.right_eye, "mask": self.mask, "face": self.face}, outputs={"postion": self.postion})
 
-    def create_progress(self, epoch_number, epoach_start, epoch, best_loss, loss_mase):
+            print('Model run done with {} epochs'.format(epochs))
+
+            simple_save_path = '{}_{}_{}'.format(model_save_loc, last_epoch, 'model_simple_save')
+            
+            if os.path.exists(simple_save_path):
+                shutil.rmtree(simple_save_path)
+
+            tensorflow.saved_model.simple_save(session, simple_save_path, inputs={"left_eye": self.left_eye, "right_eye": self.right_eye, "mask": self.mask, "face": self.face}, outputs={"postion": self.postion})
+            if self.progress:
+                self.write_end_progress(simple_save_path, model_save_loc, progress_path, best_stats, model_name='{}-{}'.format(model_name, last_epoch))
+
+    def create_progress(self, epoch_number, epoch_start, epoch, best_loss, loss_mase, write_update=True):
         """
             Creates the progress json for tracking progress of a model.
 
             Args:
                 epoch_number (int): Current epoch.
-                epoach_start (int): What it started as.
-                epoch (int): Last epoach.
+                epoch_start (int): What it started as.
+                epoch (int): Last epoch.
                 best_loss (float): The current best loss.
                 loss_mase (float): The current loss.
+                write_update (bool): If we should added in the status of the model.
         """
-        return {
-            'starting_epoach': epoach_start,
-            'current_epoach': epoch_number,
-            'final_epoach': epoch,
+        progress = {
+            'starting_epoch': epoch_start,
+            'current_epoch': epoch_number,
+            'final_epoch': epoch,
             'best_loss': best_loss,
             'current_loss': loss_mase
         }
+        if write_update:
+            progress.update({'status': 'working'})
+        return progress
 
-    def _create_feed_dict(self, data, val=False):
+    def _create_feed_dict(self, data):
         """
             Creates the feed_dict in the right format of the network
 
@@ -439,7 +457,7 @@ class Cnn_regression(object):
             session.run(self.optimizer, feed_dict=feed_dict_batch)
         return session.run(fetches, feed_dict=feed_dict_batch)
 
-    def testing(self, file_path_mod, data, batches=254):
+    def testing(self, file_path_mod, data, batch_size=254):
         """
             Taking a file path to a model location and data location, load that model
             then run the new data against it.
@@ -470,10 +488,10 @@ class Cnn_regression(object):
             self.mase = tensorflow.losses.mean_squared_error(self.prediction, self.postion)
             t_err, t_mase = (0, 0)
             total_correct_preds = 0
-            num_of_batches = data[0].shape[0] / batches + (data[0].shape[0] % batches != 0)
-            for batch_data in self._next_batch(data, batches):
+            num_of_batch_size = data[0].shape[0] / batch_size + (data[0].shape[0] % batch_size != 0)
+            for batch_data in self._next_batch(data, batch_size):
                 b_err, b_mase, l_pred, l_realp = sess.run([self.err, self.mase, self.prediction, self.postion], feed_dict=self._create_feed_dict(batch_data))
-                t_err += b_err / num_of_batches
+                t_err += b_err / num_of_batch_size
                 t_mase += b_mase
                 total_correct_preds += self._record_accuracy(l_pred, l_realp, sess)
             jdict = {'pred': {'real': l_realp.tolist(), 'model': l_pred.tolist()},
@@ -508,3 +526,25 @@ class Cnn_regression(object):
         correct_preds = tensorflow.equal(tensorflow.argmax(pred, 1), tensorflow.argmax(post, 1))
         accuracy = tensorflow.reduce_sum(tensorflow.cast(correct_preds, tensorflow.float32))
         return sess.run(accuracy)
+
+    def write_end_progress(self, model_loc, checkpoint_loc, path, last_progress, model_name):
+        """
+        Method to write the end progress file saying that it is done and where to find the save file.
+
+        Args:
+            model_loc (string): the location of the model file.
+            checkpoint_loc (string): path for the checkpoint files.
+            path (string): The system path for the progress file.
+            last_progress (dict): The last stats of the model recorded.
+            model_name (string): The name of the model.
+        """
+        progress = {
+            'status'  : 'complete',
+            'checkpoints': checkpoint_loc,
+            'model_simple_loc': model_loc,
+            'stats' : last_progress,
+            'model_name': model_name
+            }
+        with open(path, 'w+') as p:
+            json.dump(progress, p)
+            
