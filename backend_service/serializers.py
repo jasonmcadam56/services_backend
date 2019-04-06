@@ -6,8 +6,12 @@ class Modelserializer(serializers.Serializer):
 
     id = serializers.UUIDField(read_only=True)
     name = serializers.CharField(max_length=20)
+    type = serializers.CharField(max_length=10)
+    model_path = serializers.CharField(max_length=200)
+    checkpoint_path = serializers.CharField(max_length=200)
 
     dataset = serializers.PrimaryKeyRelatedField(many=False, read_only=True)
+
     uploaded = serializers.DateField(required=False)
     modified = serializers.DateField(required=False)
 

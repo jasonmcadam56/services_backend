@@ -127,6 +127,7 @@ USE_TZ = True
 
 # EyeTrack sub module settings
 _EYETRACK_DIRS = get_filepaths()
+
 EYETRACK_MODELS_DIR = _EYETRACK_DIRS['models']
 EYETRACK_PROGRESS_DIR = _EYETRACK_DIRS['progress_files']
 

@@ -1,5 +1,10 @@
-from qub_model_back.tasks import app
+import json
+
 from EyeTrack import runner
+
+from backend_service.models import Model
+from qub_model_back.settings import EYETRACK_PROGRESS_DIR
+from qub_model_back.tasks import app
 
 
 @app.task
@@ -15,6 +20,28 @@ def run(*args, **kwargs):
     """
 
     runner.main(args)
+
+    file_path = '{}/{}.json'.format(EYETRACK_PROGRESS_DIR, kwargs['name'])
+
+    print(file_path)
+
+    try:
+        with open(file_path, 'r') as f:
+            data = f.read()
+            data = json.loads(data)
+
+            print('\ndata: {}\n'.format(data))
+
+            model = Model.objects.get(name=kwargs['name'])
+
+            model.model_path = data['model_simple_loc']
+            model.checkpoint_path = data['checkpoints']
+
+            print('\nmodel: {}\n'.format(model))
+
+            model.save()
+    except FileNotFoundError as e:
+        print('ERROR: File not found:'.format(file_path))
 
 @app.task
 def debug(*args, **kwargs):

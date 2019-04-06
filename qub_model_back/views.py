@@ -71,13 +71,23 @@ def revoke_task(request):
 
 def append_progress(celery_dict, file_type='json'):
 
+    if not celery_dict:
+        return
+
     for host in celery_dict.keys():
         for worker in celery_dict[host]:
             meta = json.loads(worker['kwargs'].replace('\'', '"'))
             file_path = '{}/{}.{}'.format(EYETRACK_PROGRESS_DIR, meta['name'], file_type)
 
-            with open(file_path, mode='r') as f:
-                worker['progress'] = json.loads(f.read())
+            try:
+                with open(file_path, mode='r') as f:
+                    worker['progress'] = json.loads(f.read())
+
+            except FileNotFoundError as e:
+                #  file wont be created straight away
+                print('ERROR: FILE NOT FOUND: {}'.format(file_path))
+                pass
+
 
 
 def http_post(url, data, context):
