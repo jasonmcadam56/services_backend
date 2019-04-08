@@ -11,6 +11,8 @@ from backend_service import models
 from qub_model_back.settings import EYETRACK_PROGRESS_DIR
 from qub_model_back.tasks import app
 
+import os
+
 http = PoolManager()
 
 def index(request):
@@ -57,6 +59,19 @@ def worker(request, worker_id=None):
             revoke(worker_id, terminate=True)
 
     return HttpResponse('{}'.format(content), content_type='application/json')
+
+
+def download_model(request, model_id):
+    model = models.Model.objects.get(id=model_id)
+    name = 'saved_model.pb'  # hardcoded as tensor always saves under the same name, this needs changed to model.name
+    file_path = '{}/{}'.format(model.model_path, name)
+    if os.path.exists(file_path):
+        with open(file_path, 'rb') as f:
+            response = HttpResponse(f.read(), content_type='application/force-download')
+            response['Content-Disposition'] = 'inline; filename={}'.format(name)
+            return response
+    return HttpResponse(status=404)
+
 
 
 def revoke_task(request):
