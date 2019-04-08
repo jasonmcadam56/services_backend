@@ -42,6 +42,9 @@ class ModelViewSet(viewsets.ModelViewSet):
             "task": task,
         }
 
+        print(_args)
+        print(_kwargs)
+
         run.apply_async(args=_args, kwargs=_kwargs)
 
         return Response('Training: {}'.format(model))

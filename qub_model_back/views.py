@@ -8,7 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 from urllib3 import PoolManager
 
 from backend_service import models
-from qub_model_back.settings import EYETRACK_PROGRESS_DIR
+from qub_model_back.settings import EYETRACK_PROGRESS_DIR, DATASET_SAVE_LOCATION
 from qub_model_back.tasks import app
 
 import os
@@ -71,6 +71,28 @@ def download_model(request, model_id):
             response['Content-Disposition'] = 'inline; filename={}'.format(name)
             return response
     return HttpResponse(status=404)
+
+
+@csrf_exempt
+def upload_dataset(request):
+    name = request.POST['name']
+    dataset = request.FILES['file']
+
+    file_path = DATASET_SAVE_LOCATION + name
+
+    try:
+        ds = models.DataSet.objects.create(name=name, file_path=file_path)
+
+        with open(file_path, 'wb') as f:
+            for chunk in dataset.chunks():
+                f.write(chunk)
+
+        ds.save()
+
+        return HttpResponse(200)
+
+    except Exception as e:
+        return HttpResponseBadRequest(e)
 
 
 

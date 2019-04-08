@@ -125,6 +125,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
+DATASET_SAVE_LOCATION = 'datasets/'
+
 # EyeTrack sub module settings
 _EYETRACK_DIRS = get_filepaths()
 
@@ -167,4 +169,3 @@ else:
     CORS_ORIGIN_WHITELIST = (
         'http://localhost:5000'  # the usual path for local node development
     )
-
