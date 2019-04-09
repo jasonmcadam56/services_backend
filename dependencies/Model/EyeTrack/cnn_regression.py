@@ -378,13 +378,13 @@ class Cnn_regression(object):
             print('Model run done with {} epochs'.format(epochs))
 
             simple_save_path = '{}_{}_{}'.format(model_save_loc, last_epoch, 'model_simple_save')
-            
+
             if os.path.exists(simple_save_path):
                 shutil.rmtree(simple_save_path)
 
             tensorflow.saved_model.simple_save(session, simple_save_path, inputs={"left_eye": self.left_eye, "right_eye": self.right_eye, "mask": self.mask, "face": self.face}, outputs={"postion": self.postion})
             if self.progress:
-                self.write_end_progress(simple_save_path, model_save_loc, progress_path, best_stats, model_name='{}-{}'.format(model_name, last_epoch))
+                self.write_end_progress(simple_save_path, '{}/eye_q/'.format(path), progress_path, best_stats, model_name='{}-{}'.format(model_name, last_epoch))
 
     def create_progress(self, epoch_number, epoch_start, epoch, best_loss, loss_mase, write_update=True):
         """
@@ -539,12 +539,11 @@ class Cnn_regression(object):
             model_name (string): The name of the model.
         """
         progress = {
-            'status'  : 'complete',
+            'status': 'complete',
             'checkpoints': checkpoint_loc,
             'model_simple_loc': model_loc,
-            'stats' : last_progress,
+            'stats': last_progress,
             'model_name': model_name
-            }
+        }
         with open(path, 'w+') as p:
             json.dump(progress, p)
-            

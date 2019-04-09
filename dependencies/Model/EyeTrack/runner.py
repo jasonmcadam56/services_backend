@@ -72,7 +72,10 @@ def process_args(args_data):
     parser.add_argument('--retrain', '-rt', action='store_true', help='Used to flag for retraining a model')
     parser.add_argument('--progressFile', '-p', type=str, help='The name of the progress file e.g. Model-001 (Will overwrite progress files with the same name)')
     parser.add_argument('--name', '-n', type=str, help='The name for the model, only use letters', default='eyeq')
-
+    parser.add_argument('--screenSizeX', '-ssx', type=int, help='Size of screen to use for GCNN Model - X Resolution - (GCNN Only Argument)')
+    parser.add_argument('--screenSizeY', '-ssy', type=int, help='Size of screen to use for GCCN Model - Y Resolution - (GCNN Only Argument)')
+    parser.add_argument('--gridRowSize', '-grs', type=int, help='Size of grid for GCNN Model per row (GCCN Only Argument)')
+    parser.add_argument('--gridColSize', '-gcs', type=int, help='Size of grid for GCNN Model per column(GCNN Only Argument)')
     if args_data:
         return parser.parse_args(args_data)
     else:
@@ -98,16 +101,16 @@ def load_metadata_mit(file_loc, val_only=False):
                   eye_data["train_face_mask"],
                   eye_data["train_y"]]
     validation_data = [eye_data["val_eye_left"],
-                     eye_data['val_eye_right'],
-                     eye_data['val_face'],
-                     eye_data["val_face_mask"],
-                     eye_data["val_y"]]
+                       eye_data['val_eye_right'],
+                       eye_data['val_face'],
+                       eye_data["val_face_mask"],
+                       eye_data["val_y"]]
     if val_only:
         return validation_data
     return train_data, validation_data
 
 
-def load_metadata_eyeq(file_loc, val_only=False, gcnn=False):
+def load_metadata_eyeq(file_loc, val_only=False, gcnn=False, x_res=None, y_res=None, row_size=None, col_size=None):
     """
         Load the data file from the users input, this is formatted to eyeq layout.
 
@@ -128,16 +131,32 @@ def load_metadata_eyeq(file_loc, val_only=False, gcnn=False):
             y_label_train.append((eye_data["train_xPos"][x], eye_data["train_yPos"][x]))
         for y in range(len(eye_data["val_xPos"])):
             y_label_validation.append((eye_data["val_xPos"][y], eye_data["val_yPos"][y]))
-        train_data = [eye_data["train_left_eye"],
-                      eye_data['train_right_eye'],
-                      eye_data['train_face'],
-                      eye_data["train_face_mask"],
-                      val_to_grid(y_label_train)]
-        validation_data = [eye_data["val_left_eye"],
-                         eye_data['val_right_eye'],
-                         eye_data['val_face'],
-                         eye_data["val_face_mask"],
-                         val_to_grid(y_label_validation)]
+
+        if not x_res or not y_res or not row_size or not col_size:
+            train_data = [eye_data["train_left_eye"],
+                          eye_data['train_right_eye'],
+                          eye_data['train_face'],
+                          eye_data["train_face_mask"],
+                          val_to_grid(y_label_train)]
+
+            validation_data = [eye_data["val_left_eye"],
+                               eye_data['val_right_eye'],
+                               eye_data['val_face'],
+                               eye_data["val_face_mask"],
+                               val_to_grid(y_label_validation)]
+        else:
+            train_data = [eye_data["train_left_eye"],
+                          eye_data['train_right_eye'],
+                          eye_data['train_face'],
+                          eye_data["train_face_mask"],
+                          val_to_grid(y_label_train, x_res, y_res, row_size, col_size)]
+
+            validation_data = [eye_data["val_left_eye"],
+                               eye_data['val_right_eye'],
+                               eye_data['val_face'],
+                               eye_data["val_face_mask"],
+                               val_to_grid(y_label_validation, x_res, y_res, row_size, col_size)]
+
     else:
         train_data = [eye_data["train_left_eye"],
                       eye_data['train_right_eye'],
@@ -145,10 +164,10 @@ def load_metadata_eyeq(file_loc, val_only=False, gcnn=False):
                       eye_data["train_face_mask"],
                       np.column_stack((eye_data["train_xPos"], eye_data["train_yPos"]))]
         validation_data = [eye_data["val_left_eye"],
-                         eye_data['val_right_eye'],
-                         eye_data['val_face'],
-                         eye_data["val_face_mask"],
-                         np.column_stack((eye_data["val_xPos"], eye_data["val_yPos"]))]
+                           eye_data['val_right_eye'],
+                           eye_data['val_face'],
+                           eye_data["val_face_mask"],
+                           np.column_stack((eye_data["val_xPos"], eye_data["val_yPos"]))]
     if val_only:
         return validation_data
     else:
@@ -176,10 +195,10 @@ def load_metadata_npza(file_loc, val_only=False):
                   np.column_stack((eye_data["train_xPos"], eye_data["train_yPos"]))]
 
     validation_data = [eye_data["val_left_eye"],
-                     eye_data['val_right_eye'],
-                     eye_data['val_face'],
-                     eye_data["val_face_mask"],
-                     np.column_stack((eye_data["val_xPos"], eye_data["val_yPos"]))]
+                       eye_data['val_right_eye'],
+                       eye_data['val_face'],
+                       eye_data["val_face_mask"],
+                       np.column_stack((eye_data["val_xPos"], eye_data["val_yPos"]))]
 
     if val_only:
         return validation_data
@@ -238,7 +257,11 @@ def train(settings):
     '''
     if settings.data_arch.lower() == 'eyeq':
         if settings.type.lower() == 'gcnn':
-            train, validation = load_metadata_eyeq(settings.data, gcnn=True)
+            x_res = settings.screenSizeX
+            y_res = settings.screenSizeY
+            row_size = settings.gridRowSize
+            col_size = settings.gridColSize
+            train, validation = load_metadata_eyeq(settings.data, gcnn=True, x_res=x_res, y_res=y_res, row_size=row_size, col_size=col_size)
         else:
             train, validation = load_metadata_eyeq(settings.data)
 
@@ -261,7 +284,14 @@ def train(settings):
         raise ValueError(err)
 
     if not settings.retrain:
-        eyeQ.train(train, validation, epochs=epochs, batch_size=batch_size, name=settings.name.lower())
+        if settings.type.lower() == 'gcnn':
+            if settings.gridRowSize > 0:
+                grid_size = settings.gridRowSize * settings.gridColSize
+                eyeQ.train(train, validation, epochs, batch_size, grid_size=grid_size, name=settings.name.lower())
+            else:
+                eyeQ.train(train, validation, epochs, batch_size, name=settings.name.lower())
+        else:
+            eyeQ.train(train, validation, epochs=epochs, batch_size=batch_size, name=settings.name.lower())
     else:
         eyeQ.train(train, validation, retrain_path=settings.modelLoc)
     if settings.verbose:
