@@ -31,8 +31,8 @@ def run(*args, **kwargs):
             model = Model.objects.get(name=kwargs['name'])
 
             model.model_path = data['model_simple_loc']
-            model.checkpoint_path = data['checkpoints']
-
+            model.checkpoint_path = data['checkpoints'] + data['model_name']
+            model.status = Model.COMPLETE
             model.save()
     except FileNotFoundError as e:
         print('ERROR: File not found:'.format(file_path))

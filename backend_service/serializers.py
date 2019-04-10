@@ -15,6 +15,8 @@ class Modelserializer(serializers.Serializer):
     uploaded = serializers.DateField(required=False)
     modified = serializers.DateField(required=False)
 
+    status = serializers.CharField(max_length=10)
+
     def create(self, validated_data):
         return models.Model.objects.create(**validated_data)
 
