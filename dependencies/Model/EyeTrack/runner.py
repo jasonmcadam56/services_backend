@@ -11,7 +11,7 @@ import sys
 from argparse import ArgumentParser
 from EyeTrack.cnn_regression import Cnn_regression
 import numpy as np
-from EyeTrack import grid_classification_model
+from EyeTrack.grid_classification_model import Gccn_classification
 from EyeTrack.val_to_grid import val_to_grid
 
 
@@ -66,7 +66,7 @@ def process_args(args_data):
     parser.add_argument('-v', '--verbose', action='store_true', help='Verbose print debugging lines')
     parser.add_argument('-da', '--data_arch', type=str, default='eyeq', help='Data format type e.g. eyeq, mit')
     parser.add_argument('--test', '-vm', action='store_true', help='This flag will allow valdation of a model.')
-    parser.add_argument('-e', '--epoch', type=int, default=200, help='Number of epochs to run model with')
+    parser.add_argument('-e', '--epoch', type=int, default=10, help='Number of epochs to run model with')
     parser.add_argument('-bs', '--batch_size', type=int, default=64, help='Batch Size to run model with')
     parser.add_argument('--modelLoc', '-ml', type=str, help='The location where you model is stored.')
     parser.add_argument('--retrain', '-rt', action='store_true', help='Used to flag for retraining a model')
@@ -277,21 +277,18 @@ def train(settings):
     if settings.type.lower() == 'cnn':
         eyeQ = Cnn_regression(settings.verbose, re_train=settings.retrain, progress_filename=settings.progressFile)
     elif settings.type.lower() == 'gcnn':
-        eyeQ = grid_classification_model
+        if settings.gridRowSize:
+            grid_size = settings.gridRowSize * settings.gridColSize
+            eyeQ = Gccn_classification(grid_size=grid_size)
+        else:
+            eyeQ = Gccn_classification()
     else:
         types = 'CNN - Regression model, GCNN - Classification Model'
         err = 'Model input {} type was not found please try one of the following: {} '.format(settings.type, types)
         raise ValueError(err)
 
     if not settings.retrain:
-        if settings.type.lower() == 'gcnn':
-            if settings.gridRowSize > 0:
-                grid_size = settings.gridRowSize * settings.gridColSize
-                eyeQ.train(train, validation, epochs, batch_size, grid_size=grid_size, name=settings.name.lower())
-            else:
-                eyeQ.train(train, validation, epochs, batch_size, name=settings.name.lower())
-        else:
-            eyeQ.train(train, validation, epochs=epochs, batch_size=batch_size, name=settings.name.lower())
+        eyeQ.train(train, validation, epochs=epochs, batch_size=batch_size, name=settings.name.lower())
     else:
         eyeQ.train(train, validation, retrain_path=settings.modelLoc)
     if settings.verbose:
@@ -313,9 +310,13 @@ def test(settings):
     """
     if settings.data_arch.lower() == 'eyeq':
         if settings.type.lower() == 'gcnn':
-            validation = load_metadata_eyeq(settings.data, val_only=True, gcnn=True)
+            x_res = settings.screenSizeX
+            y_res = settings.screenSizeY
+            row_size = settings.gridRowSize
+            col_size = settings.gridColSize
+            train, validation = load_metadata_eyeq(settings.data, gcnn=True, x_res=x_res, y_res=y_res, row_size=row_size, col_size=col_size)
         else:
-            validation = load_metadata_eyeq(settings.data, val_only=True)
+            train, validation = load_metadata_eyeq(settings.data)
 
     elif settings.data_arch.lower() == 'mit':
         validation = load_metadata_mit(settings.data, val_only=True)
@@ -325,13 +326,17 @@ def test(settings):
     if settings.type.lower() == 'cnn':
         eyeQ = Cnn_regression(settings.verbose, False)
     elif settings.type.lower() == 'gcnn':
-        eyeQ = grid_classification_model
+        if settings.gridRowSize:
+            grid_size = settings.gridRowSize * gridColSize
+            eyeQ = Gccn_classification(grid_size=grid_size)
+        else:
+            eyeQ = Gccn_classification()
     else:
         types = 'CNN - Regression model, GCNN - Classification Model'
         err = 'Model input {} type was not found please try one of the following: {} '.format(settings.type, types)
         raise ValueError(err)
 
-    return eyeQ.testing(settings.modelLoc, validation)
+    return eyeQ.testing(settings.modelLoc, validation, settings.batch_size, settings.name)
 
 
 def get_filepaths():
@@ -343,8 +348,9 @@ def get_filepaths():
     """
     realpath = os.path.dirname(os.path.realpath(__file__))
     return {
-        'models': '{}/eye_q/'.format(realpath),
-        'progress_files': '{}/progress'.format(realpath)
+        'models': '{}{}eye_q'.format(realpath, os.sep),
+        'progress_files': '{}{}progress'.format(realpath, os.sep),
+        'testing_files': '{}{}test_data'.format(realpath, os.sep),
     }
 
 

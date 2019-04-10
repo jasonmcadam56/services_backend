@@ -275,7 +275,7 @@ class Cnn_regression(object):
             if self.verbose:
                 print('Save path is {}'.format(path))
         model_name = 'ccn_{}'.format(name)
-        model_save_loc = '{}/eye_q/{}'.format(path, model_name)
+        model_save_loc = '{}{}eye_q{}{}'.format(path, os.sep, model_name, os.sep)
 
         if not self.re_train:
             self.mase = tensorflow.losses.mean_squared_error(self.postion, self.prediction)
@@ -301,9 +301,9 @@ class Cnn_regression(object):
         # Setup progress file if needed
         if self.progress:
             # We will save the progress files to this app's directory
-            progress_path = '{}/progress/{}.json'.format(realpath, self.progress_filename)
-            if not os.path.exists('{}/progress'.format(realpath)):
-                os.makedirs('{}/progress'.format(realpath))
+            progress_path = '{}{}progress{}{}.json'.format(realpath, os.sep, os.sep, self.progress_filename)
+            if not os.path.exists('{}{}progress'.format(realpath, os.sep)):
+                os.makedirs('{}{}progress'.format(realpath, os.sep))
 
         with tensorflow.Session() as session:
             session.run(model_init)
@@ -320,8 +320,8 @@ class Cnn_regression(object):
                 merged = tensorflow.summary.merge_all()
 
             self.saver = tensorflow.train.Saver(max_to_keep=1)
-            train_file_writer = tensorflow.summary.FileWriter(model_save_loc + '/logs/train', session.graph)
-            val_file_writer = tensorflow.summary.FileWriter(model_save_loc + '/logs/test', session.graph)
+            train_file_writer = tensorflow.summary.FileWriter(model_save_loc + '{}logs{}train'.format(os.sep, os.sep), session.graph)
+            val_file_writer = tensorflow.summary.FileWriter(model_save_loc + '{}logs{}test'.format(os.sep, os.sep), session.graph)
 
             batch_size = 256  # Becareful depending on your machine higher level of batch_size will core dump.
             epoch_start = 1
@@ -384,7 +384,7 @@ class Cnn_regression(object):
 
             tensorflow.saved_model.simple_save(session, simple_save_path, inputs={"left_eye": self.left_eye, "right_eye": self.right_eye, "mask": self.mask, "face": self.face}, outputs={"postion": self.postion})
             if self.progress:
-                self.write_end_progress(simple_save_path, '{}/eye_q/'.format(path), progress_path, best_stats, model_name='{}-{}'.format(model_name, last_epoch))
+                self.write_end_progress(simple_save_path, '{}{}eye_q{}'.format(path, os.sep, os.sep), progress_path, best_stats, model_name='{}-{}'.format(model_name, last_epoch))
 
     def create_progress(self, epoch_number, epoch_start, epoch, best_loss, loss_mase, write_update=True):
         """
@@ -457,7 +457,7 @@ class Cnn_regression(object):
             session.run(self.optimizer, feed_dict=feed_dict_batch)
         return session.run(fetches, feed_dict=feed_dict_batch)
 
-    def testing(self, file_path_mod, data, batch_size=254):
+    def testing(self, file_path_mod, data, batch_size=254, name='test_values'):
         """
             Taking a file path to a model location and data location, load that model
             then run the new data against it.
@@ -468,8 +468,13 @@ class Cnn_regression(object):
             Args:
                 file_path_mod (str): File path to the model.
                 data (Tensor): Data to feed the nextwork.
+                batch_size (int): Size of the batch of data
+                name (str): name of the test data save.
         """
-        json_file = os.path.dirname(os.path.realpath(__file__)) + '.\\test_values.json'
+        testing_path =  os.path.dirname(os.path.realpath(__file__)) + '{}{}'.format(os.sep, 'test_data')
+        if not os.path.exists(testing_path):
+            os.makedirs(testing_path)
+
         with tensorflow.Session() as sess:
             meta_file = file_path_mod + ".meta"
             if not os.path.exists(meta_file):
@@ -496,7 +501,8 @@ class Cnn_regression(object):
                 total_correct_preds += self._record_accuracy(l_pred, l_realp, sess)
             jdict = {'pred': {'real': l_realp.tolist(), 'model': l_pred.tolist()},
                      'stats': {'accuracy': total_correct_preds, 'error': t_err, 'mase': t_mase}}
-            json.dump(jdict, open(json_file, 'w'))
+            with open('{}{}{}.json'.format(testing_path, os.sep, name), 'w+') as f:
+                json.dump(jdict, f)
             if self.verbose:
                 print('Total accuracy {}%'.format(total_correct_preds))
 

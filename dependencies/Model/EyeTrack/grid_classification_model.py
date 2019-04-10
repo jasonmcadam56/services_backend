@@ -63,208 +63,229 @@ class JSONRecorder(Callback):
             json.dump(final_dict, final_file)
 
 
-def create_eye_model(image_columns, image_rows, image_channel):
-    '''
-        Create an Convolutional model for eye data
-        Will be called twice due to needing 2 seperate models for each eye
+class Gccn_classification(object):
 
-        Args:
-            image_columns - Data representing image data column
-            image_rows - Data representing image data row
-            image_channel - Data representing image data for colour channels
-        Returns:
-            A connected Keras Model for a single eye
-    '''
-    # Take in an eye image
-    eye_image = Input(shape=(image_columns, image_rows, image_channel))
+    def __init__(self, grid_size=24):
+        '''
+            Initiate class with grid size to train and test on
 
-    eye = Conv2D(filters=96, kernel_size=(11, 11), activation='relu', data_format='channels_last')(eye_image)
-    eye = MaxPool2D(pool_size=(2, 2))(eye)
-    eye = Conv2D(filters=256, kernel_size=(5, 5), activation='relu', data_format='channels_last')(eye)
-    eye = MaxPool2D(pool_size=(2, 2))(eye)
-    eye = Conv2D(filters=384, kernel_size=(3, 3), activation='relu', data_format='channels_last')(eye)
-    eye = MaxPool2D(pool_size=(2, 2))(eye)
+            Args:
+                grid_size - Default Value - 24 - create grid size with certain size
+        '''
+        self.grid_size = grid_size
 
-    output = Conv2D(filters=64, kernel_size=(1, 1), activation='relu', data_format='channels_last')(eye)
+    def create_eye_model(self, image_columns, image_rows, image_channel):
+        '''
+            Create an Convolutional model for eye data
+            Will be called twice due to needing 2 seperate models for each eye
 
-    model = Model(
-        inputs=eye_image,
-        outputs=output)
+            Args:
+                image_columns - Data representing image data column
+                image_rows - Data representing image data row
+                image_channel - Data representing image data for colour channels
+            Returns:
+                A connected Keras Model for a single eye
+        '''
+        # Take in an eye image
+        eye_image = Input(shape=(image_columns, image_rows, image_channel))
 
-    return model
+        eye = Conv2D(filters=96, kernel_size=(11, 11), activation='relu', data_format='channels_last')(eye_image)
+        eye = MaxPool2D(pool_size=(2, 2))(eye)
+        eye = Conv2D(filters=256, kernel_size=(5, 5), activation='relu', data_format='channels_last')(eye)
+        eye = MaxPool2D(pool_size=(2, 2))(eye)
+        eye = Conv2D(filters=384, kernel_size=(3, 3), activation='relu', data_format='channels_last')(eye)
+        eye = MaxPool2D(pool_size=(2, 2))(eye)
 
+        output = Conv2D(filters=64, kernel_size=(1, 1), activation='relu', data_format='channels_last')(eye)
 
-def create_face_model(image_columns, image_rows, image_channel):
-    '''
-        Create an Convolutional model for face data
+        model = Model(
+            inputs=eye_image,
+            outputs=output)
 
-        Args:
-            image_columns - Data representing image data column
-            image_rows - Data representing image data row
-            image_channel - Data representing image data for colour channels
-        Returns:
-            A connected Keras Model for a face data
-    '''
-    face_image = Input(shape=(image_columns, image_rows, image_channel))
+        return model
 
-    face = Conv2D(filters=96, kernel_size=(11, 11), activation='relu', data_format='channels_last')(face_image)
-    face = MaxPool2D(pool_size=(2, 2))(face)
-    face = Conv2D(filters=256, kernel_size=(5, 5), activation='relu', data_format='channels_last')(face)
-    face = MaxPool2D(pool_size=(2, 2))(face)
-    face = Conv2D(filters=384, kernel_size=(3, 3), activation='relu', data_format='channels_last')(face)
-    face = MaxPool2D(pool_size=(2, 2))(face)
+    def create_face_model(self, image_columns, image_rows, image_channel):
+        '''
+            Create an Convolutional model for face data
 
-    output = Conv2D(filters=64, kernel_size=(1, 1), activation='relu', data_format='channels_last')(face)
+            Args:
+                image_columns - Data representing image data column
+                image_rows - Data representing image data row
+                image_channel - Data representing image data for colour channels
+            Returns:
+                A connected Keras Model for a face data
+        '''
+        face_image = Input(shape=(image_columns, image_rows, image_channel))
 
-    model = Model(
-        inputs=face_image,
-        outputs=output)
+        face = Conv2D(filters=96, kernel_size=(11, 11), activation='relu', data_format='channels_last')(face_image)
+        face = MaxPool2D(pool_size=(2, 2))(face)
+        face = Conv2D(filters=256, kernel_size=(5, 5), activation='relu', data_format='channels_last')(face)
+        face = MaxPool2D(pool_size=(2, 2))(face)
+        face = Conv2D(filters=384, kernel_size=(3, 3), activation='relu', data_format='channels_last')(face)
+        face = MaxPool2D(pool_size=(2, 2))(face)
 
-    return model
+        output = Conv2D(filters=64, kernel_size=(1, 1), activation='relu', data_format='channels_last')(face)
 
+        model = Model(
+            inputs=face_image,
+            outputs=output)
 
-def create_eye_tracking_model(image_columns, image_rows, image_channel, grid_size):
-    '''
-        Connect models and finnally output to final layer for classification
+        return model
 
-        Args:
-            image_columns - Data representing image data column
-            image_rows - Data representing image data row
-            image_channel - Data representing image data for colour channels
-            grid_size = Size of grid to be used for classification
+    def create_eye_tracking_model(self, image_columns, image_rows, image_channel, grid_size):
+        '''
+            Connect models and finnally output to final layer for classification
 
-        Returns:
-            A fully connected Keras Model
+            Args:
+                image_columns - Data representing image data column
+                image_rows - Data representing image data row
+                image_channel - Data representing image data for colour channels
+                grid_size = Size of grid to be used for classification
 
-    '''
-    eye_network = create_eye_model(image_columns, image_rows, image_channel)
-    face_network_partial = create_face_model(image_columns, image_rows, image_channel)
+            Returns:
+                A fully connected Keras Model
 
-    right_eye_input = Input(shape=(image_columns, image_rows, image_channel))
-    right_eye_network = eye_network(right_eye_input)
+        '''
+        eye_network = self.create_eye_model(image_columns, image_rows, image_channel)
+        face_network_partial = self.create_face_model(image_columns, image_rows, image_channel)
 
-    left_eye_input = Input(shape=(image_columns, image_rows, image_channel))
-    left_eye_network = eye_network(left_eye_input)
+        right_eye_input = Input(shape=(image_columns, image_rows, image_channel))
+        right_eye_network = eye_network(right_eye_input)
 
-    face_input = Input(shape=(image_columns, image_rows, image_channel))
-    face_network = face_network_partial(face_input)
+        left_eye_input = Input(shape=(image_columns, image_rows, image_channel))
+        left_eye_network = eye_network(left_eye_input)
 
-    face_grid = Input(shape=(25 * 25, ))
+        face_input = Input(shape=(image_columns, image_rows, image_channel))
+        face_network = face_network_partial(face_input)
 
-    eyes = concatenate([left_eye_network, right_eye_network])
-    eyes = Flatten()(eyes)
-    fc_e1 = Dense(units=128, activation='relu')(eyes)
+        face_grid = Input(shape=(25 * 25, ))
 
-    face = Flatten()(face_network)
-    fc_f1 = Dense(units=128, activation='relu')(face)
-    fc_f2 = Dense(units=64, activation='relu')(fc_f1)
+        eyes = concatenate([left_eye_network, right_eye_network])
+        eyes = Flatten()(eyes)
+        fc_e1 = Dense(units=128, activation='relu')(eyes)
 
-    fc_fg1 = Dense(units=256, activation='relu')(face_grid)
-    fc_fg2 = Dense(units=128, activation='relu')(fc_fg1)
+        face = Flatten()(face_network)
+        fc_f1 = Dense(units=128, activation='relu')(face)
+        fc_f2 = Dense(units=64, activation='relu')(fc_f1)
 
-    final_dense_layer = concatenate([fc_e1, fc_f2, fc_fg2])
+        fc_fg1 = Dense(units=256, activation='relu')(face_grid)
+        fc_fg2 = Dense(units=128, activation='relu')(fc_fg1)
 
-    fc1 = Dense(units=128, activation='relu')(final_dense_layer)
-    fc2 = Dense(units=grid_size, activation='softmax')(fc1)
+        final_dense_layer = concatenate([fc_e1, fc_f2, fc_fg2])
 
-    final_model = Model(
-        inputs=[right_eye_input, left_eye_input, face_input, face_grid],
-        output=fc2)
+        fc1 = Dense(units=128, activation='relu')(final_dense_layer)
+        fc2 = Dense(units=self.grid_size, activation='softmax')(fc1)
 
-    return final_model
+        final_model = Model(
+            inputs=[right_eye_input, left_eye_input, face_input, face_grid],
+            output=fc2)
 
+        return final_model
 
-def train(training, validation, epochs, batch_size, grid_size=24, name='', model_loc=''):
-    '''
-        Train the model based on trainging and validation data
-        When training is finished, a model will be saved to a
-        .h5 file
+    def train(self, training, validation, epochs=100, batch_size=64, name='', model_loc=''):
+        '''
+            Train the model based on trainging and validation data
+            When training is finished, a model will be saved to a
+            .h5 file
 
-        Args:
-            training: A numpy array of training data
-            validation: A numpy array of validation data
-            epochs: Number of epochs to train up to
-            batch_size: Number of batches to trian on per epoch
-            grid_size: Size of grid to train model against
-            model_loc: If a model has been previously trained, pass in the path
-                       and continue training on it
-    '''
-    print("Now training using Grid Classification")
-    image_columns = 64
-    image_rows = 64
-    image_channel = 3
-    train_y = training[4]
-    val_y = validation[4]
-    train_class_labels = to_categorical(train_y, num_classes=grid_size)
-    val_class_labels = to_categorical(val_y, num_classes=grid_size)
-    training = training[:4]
+            Args:
+                training: A numpy array of training data
+                validation: A numpy array of validation data
+                epochs: Number of epochs to train up to
+                batch_size: Number of batches to trian on per epoch
+                grid_size: Size of grid to train model against
+                model_loc: If a model has been previously trained, pass in the path
+                           and continue training on it
+        '''
+        print("Now training using Grid Classification")
+        image_columns = 64
+        image_rows = 64
+        image_channel = 3
+        train_y = training[4]
+        val_y = validation[4]
+        train_class_labels = to_categorical(train_y, num_classes=self.grid_size)
+        val_class_labels = to_categorical(val_y, num_classes=self.grid_size)
+        training = training[:4]
 
-    if model_loc is "":
-        gcnn = create_eye_tracking_model(image_columns, image_rows, image_channel, grid_size)
-        if not os.path.exists('grid/'):
-            os.makedirs('grid/')
-        adam = Adam(lr=1e-4, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
-        gcnn.compile(optimizer=adam,
-                     loss='categorical_crossentropy',
-                     metrics=['accuracy'])
-        model_loc = 'grid/gcnn.h5'
+        if model_loc is "":
+            gcnn = self.create_eye_tracking_model(image_columns, image_rows, image_channel, self.grid_size)
+            if not os.path.exists('grid/'):
+                os.makedirs('grid/')
+            adam = Adam(lr=1e-4, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
+            gcnn.compile(optimizer=adam,
+                         loss='categorical_crossentropy',
+                         metrics=['accuracy'])
+            model_loc = 'grid/gcnn.h5'
 
-    else:
-        model = load_model(model_loc)
-        config = model.get_config()
-        gcnn = Model.from_config(config)
+        else:
+            model = load_model(model_loc)
+            config = model.get_config()
+            gcnn = Model.from_config(config)
 
-    gcnn.summary()
+        gcnn.summary()
 
-    gcnn.fit(x=training,
-             y=train_class_labels,
-             batch_size=batch_size,
-             epochs=epochs,
-             verbose=1,
-             shuffle=True,
-             validation_data=(validation[:4], val_class_labels),
-             callbacks=[ModelCheckpoint(model_loc, monitor="loss", verbose=1, save_best_only=True),
-                        ProgbarLogger(),
-                        TensorBoard(log_dir='grid/logs'),
-                        ReduceLROnPlateau(),
-                        EarlyStopping(monitor="loss", patience=10),
-                        JSONRecorder(name, model_loc)])
+        gcnn.fit(x=training,
+                 y=train_class_labels,
+                 batch_size=batch_size,
+                 epochs=epochs,
+                 verbose=1,
+                 shuffle=True,
+                 validation_data=(validation[:4], val_class_labels),
+                 callbacks=[ModelCheckpoint(model_loc, monitor="loss", verbose=1, save_best_only=True),
+                            ProgbarLogger(),
+                            TensorBoard(log_dir='grid/logs'),
+                            ReduceLROnPlateau(),
+                            EarlyStopping(monitor="loss", patience=10),
+                            JSONRecorder(name, model_loc)])
 
-    gcnn.save(model_loc)
+        gcnn.save(model_loc)
 
-    eval_loss, eval_acc = gcnn.evaluate(x=training,
-                                        y=train_class_labels)
+        eval_loss, eval_acc = gcnn.evaluate(x=training,
+                                            y=train_class_labels)
 
-    print("GCNN Loss:\t{}\nGCNN Accuracy:\t{}".format(eval_loss, eval_acc))
+        print("GCNN Loss:\t{}\nGCNN Accuracy:\t{}".format(eval_loss, eval_acc))
 
+    def testing(self, model_loc, data, batch_size, name):
+        '''
+            Take a created model file and test it against unseen data to get
+            accuracy
 
-def testing(model_loc, data):
-    '''
-        Take a created model file and test it against unseen data to get
-        accuracy
+            Args:
+                model_loc: Path to previously created model
+                data: Path to data to test on
 
-        Args:
-            model_loc: Path to previously created model
-            data: Path to data to test on
+            Raise:
+                FileNotFoundError: Raise if path to model passed in is wrong
+        '''
+        if not os.path.exists(model_loc):
+            raise FileNotFoundError("Model file {} does not exist".format(model_loc))
 
-        Raise:
-            FileNotFoundError: Raise if path to model passed in is wrong
-    '''
-    if not os.path.exists(model_loc):
-        raise FileNotFoundError("Model file {} does not exist".format(model_loc))
+        gcnn = load_model(model_loc)
+        y = data[4]
+        correct_prediction = 0
+        gcnn_prob = gcnn.predict(x=data[:4], verbose=1, batch_size=1)
+        gcnn_pred = []
+        for i, prob in enumerate(gcnn_prob):
+            gcnn_pred.append(prob.argmax(axis=-1))
+            print("\nGrid Pos {} with probability {}%".format(prob.argmax(axis=-1), (prob[prob.argmax(axis=-1)] * 100)))
+            print("Label: {}".format(y[i]))
 
-    gcnn = load_model(model_loc)
-    y = data[4]
-    x_error = []
-    y_error = []
-    gcnn_prob = gcnn.predict(x=data[:4], verbose=1, batch_size=1)
-    gcnn_classes = gcnn_prob.argmax(axis=-1)
-    for i, prob in enumerate(gcnn_prob):
-        print("\nGrid Pos {} with probability {}%".format(prob.argmax(axis=-1), (prob[prob.argmax(axis=-1)] * 100)))
-        print("Label: {}".format(y[i]))
-    x_error = 1
-    y_error = 1
+            if prob.argmax(axis=-1) == int(y[i]):
+                correct_prediction += 1
 
-    mase = (x_error, y_error)
+        class_y = to_categorical(y, num_classes=self.grid_size)
 
-    return mase, 0.0
+        eval_loss, eval_acc = gcnn.evaluate(x=data[:4],
+                                            y=class_y)
+
+        total_prob = (correct_prediction / len(y)) * 100
+
+        test_dict = {"pred": {"real": [int(i) for i in y], "model": gcnn_pred},
+                     "stats": {"accuracy": total_prob, "loss": eval_loss}}
+
+        with open("gcnn_testing.json", 'w') as test_json:
+            json.dump(str(test_dict), test_json)
+
+        print("Model Probablity {}%".format(total_prob))
+
+        return test_dict
