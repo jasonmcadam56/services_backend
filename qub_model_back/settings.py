@@ -125,13 +125,14 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
-DATASET_SAVE_LOCATION = 'datasets/'
+DATASET_SAVE_LOCATION = os.path.abspath('datasets/') + '/'
 
 # EyeTrack sub module settings
 _EYETRACK_DIRS = get_filepaths()
 
 EYETRACK_MODELS_DIR = _EYETRACK_DIRS['models']
 EYETRACK_PROGRESS_DIR = _EYETRACK_DIRS['progress_files']
+EYETRACK_RESULTS_DIR = _EYETRACK_DIRS['testing_files'] + '/'
 
 # settings for async workers
 if os.environ.get('QUB_MODEL_DEMO_MODE') == 'PRODUCTION':

@@ -1,10 +1,9 @@
-import os
-
 from rest_framework import viewsets
 from rest_framework.response import Response
 
 from backend_service import serializers, models
 from backend_service.tasks import run
+from qub_model_back.views import parse_args
 
 
 class ModelViewSet(viewsets.ModelViewSet):
@@ -51,22 +50,3 @@ class DataSetViewSet(viewsets.ModelViewSet):
     queryset = models.DataSet.objects.all()
     serializer_class = serializers.DataSetserializer
 
-
-def parse_args(data):
-
-    args = []
-
-    if data.get('run_type') == 'test':
-        args.append('--test')
-        args.append('--type={}'.format(data.get('nn_type')))
-        args.append('--modelLoc=={}'.format(os.path.abspath('qub_model_back/nnmodels/{}'.format(data.get('nn_model')))))
-        args.append('--data={}'.format(os.path.abspath('qub_model_back/datasets/{}'.format(data.get('dataset')))))
-    elif data.get('run_type') == 'train':
-        args.append('--train')
-        args.append('--type={}'.format(data.get('nn_type')))
-        args.append('--data={}'.format(data.get('dataset_location')))
-        args.append('-p={}'.format(data.get('name')))
-
-    args.append('-v')
-
-    return args

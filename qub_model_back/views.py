@@ -8,8 +8,9 @@ from django.views.decorators.csrf import csrf_exempt
 from urllib3 import PoolManager
 
 from backend_service import models
-from qub_model_back.settings import EYETRACK_PROGRESS_DIR, DATASET_SAVE_LOCATION
+from qub_model_back.settings import EYETRACK_PROGRESS_DIR, DATASET_SAVE_LOCATION, EYETRACK_RESULTS_DIR
 from qub_model_back.tasks import app
+from backend_service.tasks import run
 
 import os
 
@@ -79,6 +80,7 @@ def upload_dataset(request):
     dataset = request.FILES['file']
 
     file_path = DATASET_SAVE_LOCATION + name
+    print(file_path)
 
     try:
         ds = models.DataSet.objects.create(name=name, file_path=file_path)
@@ -95,12 +97,70 @@ def upload_dataset(request):
         return HttpResponseBadRequest(e)
 
 
+@csrf_exempt
+def test_model(request, model_id):
+
+    if request.method == 'POST':
+        try:
+            dataset_id = loads(request.body.decode('utf-8')).get('dataset_id')
+
+            model = models.Model.objects.get(id=model_id)
+            dataset = models.DataSet.objects.get(id=dataset_id)
+
+            _args = {
+                'run_type': 'test',
+                'nn_type': model.type,
+                'nn_model': model.checkpoint_path,
+                'dataset': dataset.file_path,
+                'name': model.name
+            }
+
+            _kwargs = {
+                'name': model.name,
+                'task': 'test',
+            }
+
+            _args = parse_args(_args)
+            print(_args)
+            run.apply_async(args=_args)
+
+            return HttpResponse(200)
+        except Exception as e:
+            print(e)
+            return HttpResponse(e, status=500)
+
+    elif request.method == 'GET':
+
+        name = models.Model.objects.get(id=model_id).name
+        file = EYETRACK_RESULTS_DIR + name + '.json'
+
+        with open(file, 'r') as f:
+            contents = f.read()
+
+        contents = json.dumps(contents)
+        return HttpResponse('{}'.format(contents), content_type='application/json')
+
+    return HttpResponse(status=400)
+
+
+def download_test_results(request, model_id):
+    name = models.Model.objects.get(id=model_id).name
+    file = EYETRACK_RESULTS_DIR + name + '.json'
+
+    if os.path.exists(file):
+        with open(file, 'r') as f:
+            response = HttpResponse(f.read(), content_type='application/force-download')
+            response['Content-Disposition'] = 'inline; filename={}'.format(name)
+            return response
+
+    return HttpResponse(status=404)
+
 
 def revoke_task(request):
 
     if not request.method == 'POST':
         return HttpResponseBadRequest('Only http POST allowed for revoking tasks')
-
+    print(request.POST)
     task_id = request.POST['task_id']
     revoke(task_id, terminate=True)
     return HttpResponse(200)
@@ -126,7 +186,6 @@ def append_progress(celery_dict, file_type='json'):
                 pass
 
 
-
 def http_post(url, data, context):
 
     body = json.dumps(data)
@@ -139,3 +198,24 @@ def http_post(url, data, context):
                        )
 
     context['STATUS_CODE'] = res.status
+
+
+def parse_args(data):
+
+    args = []
+
+    if data.get('run_type') == 'test':
+        args.append('--test')
+        args.append('--type={}'.format(data.get('nn_type')))
+        args.append('--modelLoc={}'.format(data.get('nn_model')))
+        args.append('--data={}'.format(data.get('dataset')))
+        args.append('--name={}'.format(data.get('name')))
+    elif data.get('run_type') == 'train':
+        args.append('--train')
+        args.append('--type={}'.format(data.get('nn_type')))
+        args.append('--data={}'.format(data.get('dataset_location')))
+        args.append('-p={}'.format(data.get('name')))
+
+    args.append('-v')
+
+    return args

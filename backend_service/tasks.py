@@ -19,23 +19,27 @@ def run(*args, **kwargs):
         eg...   args = ['--type=cnn', 'test', ...]
     """
 
+
+    print(args)
+
     runner.main(args)
 
-    file_path = '{}/{}.json'.format(EYETRACK_PROGRESS_DIR, kwargs['name'])
+    if '--train' in args:
+        file_path = '{}/{}.json'.format(EYETRACK_PROGRESS_DIR, kwargs['name'])
 
-    try:
-        with open(file_path, 'r') as f:
-            data = f.read()
-            data = json.loads(data)
+        try:
+            with open(file_path, 'r') as f:
+                data = f.read()
+                data = json.loads(data)
 
-            model = Model.objects.get(name=kwargs['name'])
+                model = Model.objects.get(name=kwargs['name'])
 
-            model.model_path = data['model_simple_loc']
-            model.checkpoint_path = data['checkpoints'] + data['model_name']
-            model.status = Model.COMPLETE
-            model.save()
-    except FileNotFoundError as e:
-        print('ERROR: File not found:'.format(file_path))
+                model.model_path = data['model_simple_loc']
+                model.checkpoint_path = data['checkpoints'] + data['model_name']
+                model.status = Model.COMPLETE
+                model.save()
+        except FileNotFoundError as e:
+            print('ERROR: File not found:'.format(file_path))
 
 @app.task
 def debug(*args, **kwargs):

@@ -25,5 +25,7 @@ urlpatterns = [
     path('workers/<slug:worker_id>/', views.worker),
     path('model/<slug:model_id>/download/', views.download_model),
     path('dataset/upload/', views.upload_dataset),
+    path('model/<slug:model_id>/test/', views.test_model),
+    path('model/<slug:model_id>/test/download/', views.download_test_results),
     url(r'^$', views.index, name='index'),
 ]
