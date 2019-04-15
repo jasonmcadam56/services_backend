@@ -5,7 +5,7 @@ from flask_restful import Resource, Api
 
 from Resources.Welcome import Welcome
 from Resources.Trainer import Train
-from Resources.Tester import Test
+from Resources.Tester import Test, TestFile
 from Resources.Data import Data
 from Resources.ML_Model import ML_Model
 from Resources.Progress import Progress, ProgressList
@@ -34,6 +34,7 @@ def create_app(config_filename):
     api.add_resource(Train, '/train')
     api.add_resource(Data, '/data')
     api.add_resource(Test, '/test')
+    api.add_resource(TestFile, '/test/<string:test_file>')
     api.add_resource(ML_Model, '/model')
     api.add_resource(ProgressList, '/progress')
     api.add_resource(Progress, '/progress/<string:progress_id>')

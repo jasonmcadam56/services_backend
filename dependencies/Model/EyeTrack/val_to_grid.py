@@ -1,4 +1,5 @@
 import numpy as np
+import math
 
 
 def val_to_grid(labels, x_res=1200, y_res=800, row_size=6, col_size=4):
@@ -32,31 +33,8 @@ def val_to_grid(labels, x_res=1200, y_res=800, row_size=6, col_size=4):
 
     # Iterate over every position in lables
     for val in labels:
-        # Need to handle orientation changes
-        if val[1] > y_res:
-            # Iterate over values in x grid array
-            for x in range(len(x_grid_array)):
-                if val[1] >= x_grid_array[x] and val[1] < x_grid_array[x + 1]:
-                    x_classification_labels.append(x)
-                    break
-
-            # Iterate over values in y grid array
-            for y in range(len(y_grid_array)):
-                if val[0] >= y_grid_array[y] and val[0] < y_grid_array[y + 1]:
-                    y_classification_labels.append(y)
-                    break
-
-        else:
-            # Iterate over values in x grid array
-            for x in range(len(x_grid_array)):
-                if val[0] >= x_grid_array[x] and val[0] < x_grid_array[x + 1]:
-                    x_classification_labels.append(x)
-                    break
-            # Iterate over values in y grid array
-            for y in range(len(y_grid_array)):
-                if val[1] >= y_grid_array[y] and val[1] < y_grid_array[y + 1]:
-                    y_classification_labels.append(y)
-                    break
+        x_classification_labels.append(int(round(val[0] / x_res_per_grid_pos)))
+        y_classification_labels.append(int(round(val[1] / y_res_per_grid_pos)))
 
     classification_labels = []
 

@@ -32,7 +32,7 @@ class Cnn_regression(object):
                 v (bool) : Flag for verbose mode.
                 training : Flag for training mode.
                 re_train : Flag for using a older model.
-                progress_file: The name of a progress file, if blank we will not save the file.
+                progress_filename: The name of a progress file, if blank we will not save the file.
         """
         self.verbose = v
         self.re_train = re_train
@@ -173,7 +173,6 @@ class Cnn_regression(object):
         # shape = eye size, eye size, RGN channels, eye out E1 is a 11 x 11 / 96 kernal.
         # https://www.oreilly.com/ideas/building-deep-learning-neural-networks-using-tensorflow-layers
         # We need to scope so that we can reuse these varibles instead of recreating them.
-        # TODO: Try replacing xavier with tf.keras.initializers.VarianceScaling since we are using relu activation functions.
         with tensorflow.variable_scope('', reuse=tensorflow.AUTO_REUSE):
             conv1_weight = tensorflow.get_variable('conv1_eye_weight', shape=(11, 11, 3, 96),
                                                    initializer=tensorflow.initializers.variance_scaling())
@@ -259,7 +258,10 @@ class Cnn_regression(object):
                  training (numpy.Array) : Used to replace placeholder data in the session for training.
                  validation (numpy.Array) : Used to replace placeholder data in the session for validation.
                  path (string) : Location of to save model.
+                 epochs (int) : The amount of epcohs to run.
                  retrain_path (string) : path to the model to use.
+                 batch_size (int): The size of the batches for training and valation.
+                 name (string) : The name of the model when saving.
 
             Raises:
 
@@ -275,8 +277,7 @@ class Cnn_regression(object):
             if self.verbose:
                 print('Save path is {}'.format(path))
         model_name = 'ccn_{}'.format(name)
-        model_save_loc = '{}{}eye_q{}{}'.format(path, os.sep, model_name, os.sep)
-
+        model_save_loc = '{}{}eye_q{}{}'.format(path, os.sep, os.sep, model_name)
         if not self.re_train:
             self.mase = tensorflow.losses.mean_squared_error(self.postion, self.prediction)
             self.optimizer = tensorflow.train.AdamOptimizer(learning_rate=1e-4, beta1=0.9, beta2=0.999, epsilon=1e-08).minimize(self.mase)
@@ -323,7 +324,7 @@ class Cnn_regression(object):
             train_file_writer = tensorflow.summary.FileWriter(model_save_loc + '{}logs{}train'.format(os.sep, os.sep), session.graph)
             val_file_writer = tensorflow.summary.FileWriter(model_save_loc + '{}logs{}test'.format(os.sep, os.sep), session.graph)
 
-            batch_size = 256  # Becareful depending on your machine higher level of batch_size will core dump.
+            batch_size = batch_size  # Becareful depending on your machine higher level of batch_size will core dump.
             epoch_start = 1
             last_epoch = 1
             if self.re_train:
@@ -471,7 +472,7 @@ class Cnn_regression(object):
                 batch_size (int): Size of the batch of data
                 name (str): name of the test data save.
         """
-        testing_path =  os.path.dirname(os.path.realpath(__file__)) + '{}{}'.format(os.sep, 'test_data')
+        testing_path = os.path.dirname(os.path.realpath(__file__)) + '{}{}'.format(os.sep, 'test_data')
         if not os.path.exists(testing_path):
             os.makedirs(testing_path)
 
@@ -509,6 +510,19 @@ class Cnn_regression(object):
             return jdict
 
     def _load_model(self, path, sess):
+        """
+            This method will restore a network, and get the nodes to rebuild the network.
+
+            Args:
+                path (string): the path to the model.
+                sess (tensorflow.session) : A tensorflow session to use to restore a network.
+
+            Raises:
+                ValueError - When the path doesn't exist.
+
+            Returns:
+                (tensorflow.tensor): A collection of all the nodes of a network.
+        """
         meta_file = path + ".meta"
         if not os.path.exists(meta_file):
             raise ValueError('No metadata file loaded')

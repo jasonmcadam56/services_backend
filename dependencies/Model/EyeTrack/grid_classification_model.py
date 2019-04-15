@@ -30,7 +30,7 @@ class JSONRecorder(Callback):
 
     def __init__(self, name, model_loc):
         super(JSONRecorder, self).__init__()
-        self.name = "{}.json".format(name)
+        self.name = "progress/{}.json".format(name)
         self.model_loc = model_loc
 
     def on_train_begin(self, logs=None):
@@ -50,7 +50,12 @@ class JSONRecorder(Callback):
 
         self.stats = logs
 
-        with open(self.name, 'w') as prog_file:
+        prog_path = os.path.dirname('progress/')
+
+        if not os.path.exists(prog_path):
+            os.makedirs(prog_path)
+
+        with open(self.name, 'w+') as prog_file:
             json.dump(progress_dict, prog_file)
 
     def on_train_end(self, logs=None):
@@ -59,13 +64,13 @@ class JSONRecorder(Callback):
                       "stats": str(self.stats),
                       "model_name": os.path.splitext(self.model_loc)[0]}
 
-        with open(self.name, 'w') as final_file:
+        with open(self.name, 'w+') as final_file:
             json.dump(final_dict, final_file)
 
 
 class Gccn_classification(object):
 
-    def __init__(self, grid_size=24):
+    def __init__(self, grid_size=24, name=''):
         '''
             Initiate class with grid size to train and test on
 
@@ -73,6 +78,7 @@ class Gccn_classification(object):
                 grid_size - Default Value - 24 - create grid size with certain size
         '''
         self.grid_size = grid_size
+        self.name = name
 
     def create_eye_model(self, image_columns, image_rows, image_channel):
         '''
@@ -209,13 +215,13 @@ class Gccn_classification(object):
 
         if model_loc is "":
             gcnn = self.create_eye_tracking_model(image_columns, image_rows, image_channel, self.grid_size)
-            if not os.path.exists('grid/'):
-                os.makedirs('grid/')
+            if not os.path.exists('eyeq/'):
+                os.makedirs('eyeq/')
             adam = Adam(lr=1e-4, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
             gcnn.compile(optimizer=adam,
                          loss='categorical_crossentropy',
                          metrics=['accuracy'])
-            model_loc = 'grid/gcnn.h5'
+            model_loc = 'eyeq/gcnn_{}.h5'.format(name)
 
         else:
             model = load_model(model_loc)
@@ -235,8 +241,8 @@ class Gccn_classification(object):
                             ProgbarLogger(),
                             TensorBoard(log_dir='grid/logs'),
                             ReduceLROnPlateau(),
-                            EarlyStopping(monitor="loss", patience=10),
-                            JSONRecorder(name, model_loc)])
+                            EarlyStopping(monitor="val_loss", patience=50),
+                            JSONRecorder(self.name, model_loc)])
 
         gcnn.save(model_loc)
 
@@ -283,7 +289,12 @@ class Gccn_classification(object):
         test_dict = {"pred": {"real": [int(i) for i in y], "model": gcnn_pred},
                      "stats": {"accuracy": total_prob, "loss": eval_loss}}
 
-        with open("gcnn_testing.json", 'w') as test_json:
+        test_path = os.path.dirname('test_data/')
+
+        if not os.path.exists(test_path):
+            os.makedirs(test_path)
+
+        with open("test_data/gcnn_test_{}.json".format(name), 'w') as test_json:
             json.dump(str(test_dict), test_json)
 
         print("Model Probablity {}%".format(total_prob))

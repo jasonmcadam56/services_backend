@@ -1,7 +1,9 @@
 setup.py
 EyeTrack/__init__.py
 EyeTrack/cnn_regression.py
+EyeTrack/grid_classification_model.py
 EyeTrack/runner.py
+EyeTrack/val_to_grid.py
 EyeTrack.egg-info/PKG-INFO
 EyeTrack.egg-info/SOURCES.txt
 EyeTrack.egg-info/dependency_links.txt

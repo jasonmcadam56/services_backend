@@ -66,7 +66,7 @@ def process_args(args_data):
     parser.add_argument('-v', '--verbose', action='store_true', help='Verbose print debugging lines')
     parser.add_argument('-da', '--data_arch', type=str, default='eyeq', help='Data format type e.g. eyeq, mit')
     parser.add_argument('--test', '-vm', action='store_true', help='This flag will allow valdation of a model.')
-    parser.add_argument('-e', '--epoch', type=int, default=10, help='Number of epochs to run model with')
+    parser.add_argument('-e', '--epoch', type=int, default=200, help='Number of epochs to run model with')
     parser.add_argument('-bs', '--batch_size', type=int, default=64, help='Batch Size to run model with')
     parser.add_argument('--modelLoc', '-ml', type=str, help='The location where you model is stored.')
     parser.add_argument('--retrain', '-rt', action='store_true', help='Used to flag for retraining a model')
@@ -125,12 +125,8 @@ def load_metadata_eyeq(file_loc, val_only=False, gcnn=False, x_res=None, y_res=N
     """
     eye_data = np.load(file_loc)
     if gcnn:
-        y_label_train = []
-        y_label_validation = []
-        for x in range(len(eye_data["train_xPos"])):
-            y_label_train.append((eye_data["train_xPos"][x], eye_data["train_yPos"][x]))
-        for y in range(len(eye_data["val_xPos"])):
-            y_label_validation.append((eye_data["val_xPos"][y], eye_data["val_yPos"][y]))
+        y_label_train = np.column_stack((eye_data["train_xPos"], eye_data["train_yPos"]))
+        y_label_validation = np.column_stack((eye_data["val_xPos"], eye_data["val_yPos"]))
 
         if not x_res or not y_res or not row_size or not col_size:
             train_data = [eye_data["train_left_eye"],
@@ -279,9 +275,9 @@ def train(settings):
     elif settings.type.lower() == 'gcnn':
         if settings.gridRowSize:
             grid_size = settings.gridRowSize * settings.gridColSize
-            eyeQ = Gccn_classification(grid_size=grid_size)
+            eyeQ = Gccn_classification(grid_size=grid_size, name=settings.progressFile)
         else:
-            eyeQ = Gccn_classification()
+            eyeQ = Gccn_classification(name=settings.progressFile)
     else:
         types = 'CNN - Regression model, GCNN - Classification Model'
         err = 'Model input {} type was not found please try one of the following: {} '.format(settings.type, types)
@@ -327,7 +323,7 @@ def test(settings):
         eyeQ = Cnn_regression(settings.verbose, False)
     elif settings.type.lower() == 'gcnn':
         if settings.gridRowSize:
-            grid_size = settings.gridRowSize * gridColSize
+            grid_size = settings.gridRowSize * settings.gridColSize
             eyeQ = Gccn_classification(grid_size=grid_size)
         else:
             eyeQ = Gccn_classification()
