@@ -18,6 +18,11 @@ http = PoolManager()
 
 def index(request):
 
+    """
+    :param request: django request object
+    :return: rendered html of index template
+    """
+
     context = {
         'nn_types': [t for t in models.Model.TYPE_CHOICES],
         'datasets': [dataset for dataset in models.DataSet.objects.all()]
@@ -28,7 +33,12 @@ def index(request):
 
 @csrf_exempt
 def worker(request, worker_id=None):
-
+    """
+    :param request: django request object
+    :param worker_id: id for worker to interact with
+    :return: content of interaction
+    :except: exception on bad data
+    """
     content = ''
 
     if worker_id == None:
@@ -63,6 +73,11 @@ def worker(request, worker_id=None):
 
 
 def download_model(request, model_id):
+    """
+    :param request: django request object
+    :param model_id: ID of model to download
+    :return: stream for client to download model file
+    """
     model = models.Model.objects.get(id=model_id)
     name = 'saved_model.pb'  # hardcoded as tensor always saves under the same name, this needs changed to model.name
     file_path = '{}/{}'.format(model.model_path, name)
@@ -76,11 +91,15 @@ def download_model(request, model_id):
 
 @csrf_exempt
 def upload_dataset(request):
+    """
+    :param request: django request object
+    :return: 200 on successfull upload
+    :except: return Exception data on expection
+    """
     name = request.POST['name']
     dataset = request.FILES['file']
 
     file_path = DATASET_SAVE_LOCATION + name
-    print(file_path)
 
     try:
         ds = models.DataSet.objects.create(name=name, file_path=file_path)
@@ -99,7 +118,12 @@ def upload_dataset(request):
 
 @csrf_exempt
 def test_model(request, model_id):
-
+    """
+    :param request: django request object
+    :param model_id: ID of model to use for testing/valiation
+    :return: HTTP 200
+    :except Dataset or Model not found. Test files results inaccessible
+    """
     if request.method == 'POST':
         try:
             dataset_id = loads(request.body.decode('utf-8')).get('dataset_id')
@@ -121,12 +145,11 @@ def test_model(request, model_id):
             }
 
             _args = parse_args(_args)
-            print(_args)
+
             run.apply_async(args=_args)
 
             return HttpResponse(200)
         except Exception as e:
-            print(e)
             return HttpResponse(e, status=500)
 
     elif request.method == 'GET':
@@ -144,6 +167,12 @@ def test_model(request, model_id):
 
 
 def download_test_results(request, model_id):
+    """
+    :param request: django request object
+    :param model_id: ID of model to download
+    :return: Stream to download model
+    :except 404 when test file isnt found
+    """
     name = models.Model.objects.get(id=model_id).name
     file = EYETRACK_RESULTS_DIR + name + '.json'
 
@@ -157,16 +186,25 @@ def download_test_results(request, model_id):
 
 
 def revoke_task(request):
+    """
+    :param request: django request object
+    :return: HTTP response 200
+    """
 
     if not request.method == 'POST':
         return HttpResponseBadRequest('Only http POST allowed for revoking tasks')
-    print(request.POST)
+
     task_id = request.POST['task_id']
     revoke(task_id, terminate=True)
     return HttpResponse(200)
 
 
 def append_progress(celery_dict, file_type='json'):
+    """
+    :param celery_dict: dict returned from celery.active method
+    :param file_type: type of file to read
+    :return: dict of original data with worker progress appended
+    """
 
     if not celery_dict:
         return
@@ -187,6 +225,12 @@ def append_progress(celery_dict, file_type='json'):
 
 
 def http_post(url, data, context):
+    """
+    :param url: host name to post to
+    :param data: data of post request
+    :param context: django context to append response data to
+    :return:
+    """
 
     body = json.dumps(data)
     body = body.encode('utf-8')
@@ -201,6 +245,10 @@ def http_post(url, data, context):
 
 
 def parse_args(data):
+    """
+    :param data: dict of data for passing to EyeTrack runner
+    :return: data formatted to be accessible by EyeTrack runner
+    """
 
     args = []
 

@@ -47,6 +47,10 @@ class ModelViewSet(viewsets.ModelViewSet):
 
 
 class DataSetViewSet(viewsets.ModelViewSet):
+    """
+    Viewset to encapsulate the usual model (django) behaviour
+    Can create with POST, list with GET and retrieve a full list with GET
+    """
     queryset = models.DataSet.objects.all()
     serializer_class = serializers.DataSetserializer
 

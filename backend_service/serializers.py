@@ -3,6 +3,9 @@ from backend_service import models
 
 
 class Modelserializer(serializers.Serializer):
+    """
+    Serializer to handle data transfer between database model and view
+    """
 
     id = serializers.UUIDField(read_only=True)
     name = serializers.CharField(max_length=20)
@@ -22,6 +25,9 @@ class Modelserializer(serializers.Serializer):
 
 
 class DataSetserializer(serializers.Serializer):
+    """
+     Serializer to handle data transfer between database model and view
+     """
     id = serializers.UUIDField(read_only=True)
     name = serializers.CharField(max_length=20)
 

@@ -19,12 +19,11 @@ def run(*args, **kwargs):
         eg...   args = ['--type=cnn', 'test', ...]
     """
 
-
-    print(args)
-
+    # --type = gcnn
     runner.main(args)
 
-    if '--train' in args:
+    # train regression cnn
+    if '--train' in args and '--type=cnn' in args:
         file_path = '{}/{}.json'.format(EYETRACK_PROGRESS_DIR, kwargs['name'])
 
         try:
@@ -40,6 +39,9 @@ def run(*args, **kwargs):
                 model.save()
         except FileNotFoundError as e:
             print('ERROR: File not found:'.format(file_path))
+
+    # train grided cnn
+
 
 @app.task
 def debug(*args, **kwargs):

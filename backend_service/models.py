@@ -3,6 +3,10 @@ import uuid
 
 
 class DataSet(models.Model):
+    """
+    Dataset database representation. Holds dataset information that we need to
+    store to facilitate functionality
+    """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.TextField(max_length=20)
 
@@ -12,6 +16,10 @@ class DataSet(models.Model):
 
 
 class Model(models.Model):
+    """
+    Model database representation. Holds model information that we need to
+    store to faciliate functionality
+    """
     TYPE_CHOICES = [('CNN', 'cnn'), ('GRID', 'grid')]
 
     BUILDING = 'BUILDING'
