@@ -158,12 +158,12 @@ def load_metadata_eyeq(file_loc, val_only=False, gcnn=False, x_res=None, y_res=N
                       eye_data['train_right_eye'],
                       eye_data['train_face'],
                       eye_data["train_face_mask"],
-                      np.column_stack((eye_data["train_xPos"], eye_data["train_yPos"]))]
+                      np.column_stack((eye_data["train_XCam"], eye_data["train_YCam"]))]
         validation_data = [eye_data["val_left_eye"],
                            eye_data['val_right_eye'],
                            eye_data['val_face'],
                            eye_data["val_face_mask"],
-                           np.column_stack((eye_data["val_xPos"], eye_data["val_yPos"]))]
+                           np.column_stack((eye_data["val_XCam"], eye_data["val_YCam"]))]
     if val_only:
         return validation_data
     else:
