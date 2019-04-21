@@ -11,7 +11,7 @@ import sys
 from argparse import ArgumentParser
 from EyeTrack.cnn_regression import Cnn_regression
 import numpy as np
-from EyeTrack.grid_classification_model import Gccn_classification
+from EyeTrack.grid_classification_model import Gcnn_classification
 from EyeTrack.val_to_grid import val_to_grid
 
 
@@ -32,7 +32,7 @@ def main(from_app=[]):
     if settings.verbose:
         print('Verbose mode is on.')
 
-    data_archs = ['eyeq', 'mit']
+    data_archs = ['eyeq', 'mit', 'npza']
 
     if not settings.name.isalpha():
         raise ValueError('Name can only be letters do not pass in numbers or symbols')
@@ -62,20 +62,21 @@ def process_args(args_data):
 
     parser.add_argument('--type', '-t', type=str, required=True, help='What type of model you want to train (CNN, Grid classication)')
     parser.add_argument('--train', '-tm', action='store_true', help='This flag will train the model')
-    parser.add_argument('-d', '--data', type=str, required=True, help='Path for the data')
-    parser.add_argument('-v', '--verbose', action='store_true', help='Verbose print debugging lines')
-    parser.add_argument('-da', '--data_arch', type=str, default='eyeq', help='Data format type e.g. eyeq, mit')
+    parser.add_argument('--data', '-d', type=str, required=True, help='Path for the data')
+    parser.add_argument('--verbose', '-v', action='store_true', help='Verbose print debugging lines')
+    parser.add_argument('--data_arch', '-da', type=str, default='eyeq', help='Data format type e.g. eyeq, mit')
     parser.add_argument('--test', '-vm', action='store_true', help='This flag will allow valdation of a model.')
-    parser.add_argument('-e', '--epoch', type=int, default=200, help='Number of epochs to run model with')
-    parser.add_argument('-bs', '--batch_size', type=int, default=64, help='Batch Size to run model with')
+    parser.add_argument('--epoch', '-e', type=int, default=200, help='Number of epochs to run model with')
+    parser.add_argument('--batch_size', '-bs', type=int, default=64, help='Batch Size to run model with')
     parser.add_argument('--modelLoc', '-ml', type=str, help='The location where you model is stored.')
     parser.add_argument('--retrain', '-rt', action='store_true', help='Used to flag for retraining a model')
     parser.add_argument('--progressFile', '-p', type=str, help='The name of the progress file e.g. Model-001 (Will overwrite progress files with the same name)')
     parser.add_argument('--name', '-n', type=str, help='The name for the model, only use letters', default='eyeq')
     parser.add_argument('--screenSizeX', '-ssx', type=int, help='Size of screen to use for GCNN Model - X Resolution - (GCNN Only Argument)')
-    parser.add_argument('--screenSizeY', '-ssy', type=int, help='Size of screen to use for GCCN Model - Y Resolution - (GCNN Only Argument)')
-    parser.add_argument('--gridRowSize', '-grs', type=int, help='Size of grid for GCNN Model per row (GCCN Only Argument)')
+    parser.add_argument('--screenSizeY', '-ssy', type=int, help='Size of screen to use for GCNN Model - Y Resolution - (GCNN Only Argument)')
+    parser.add_argument('--gridRowSize', '-grs', type=int, help='Size of grid for GCNN Model per row (GCNN Only Argument)')
     parser.add_argument('--gridColSize', '-gcs', type=int, help='Size of grid for GCNN Model per column(GCNN Only Argument)')
+    parser.add_argument('--datalessTest', '-dl', action='store_true', help='Fake the Y,X data for testing when a dataset does not have X,Y data. (EYEQ Only)')
     if args_data:
         return parser.parse_args(args_data)
     else:
@@ -110,23 +111,40 @@ def load_metadata_mit(file_loc, val_only=False):
     return train_data, validation_data
 
 
-def load_metadata_eyeq(file_loc, val_only=False, gcnn=False, x_res=None, y_res=None, row_size=None, col_size=None):
+def load_metadata_eyeq(file_loc, val_only=False, gcnn=False, x_res=None, y_res=None, row_size=None, col_size=None, datalessTest=False):
     """
         Load the data file from the users input, this is formatted to eyeq layout.
 
         Args:
             file_loc (str): The string of the file location.
             val_only (bool): flag for returing only validation data.
-            gcnn: Boolean to check if gcnn is being used to train or test model
+            gcnn (bool): Boolean to check if gcnn is being used to train or test model
+            datalessTest (bool): fake x,y cam or pos for testing.
 
         Return:
             train_data (List): List of the train values.
             validation_data (List): List of the validation values.
     """
     eye_data = np.load(file_loc)
+
+    if datalessTest:
+        t_length = len(eye_data["train_left_eye"])
+        v_length = len(eye_data["val_left_eye"])
+        train_fake_y = np.zeros(t_length)
+        train_fake_x = np.zeros(t_length)
+        val_fake_y = np.zeros(v_length)
+        val_fake_x = np.zeros(v_length)
+        y_label_train = np.column_stack((train_fake_y, train_fake_x))
+        y_label_validation = np.column_stack((val_fake_x, val_fake_y))
+    else:
+        if gcnn:
+            y_label_train = np.column_stack((eye_data["train_xPos"], eye_data["train_yPos"]))
+            y_label_validation = np.column_stack((eye_data["val_xPos"], eye_data["val_yPos"]))
+        else:
+            y_label_train = np.column_stack((eye_data["train_XCam"], eye_data["train_YCam"]))
+            y_label_validation = np.column_stack((eye_data["val_XCam"], eye_data["val_YCam"]))
+
     if gcnn:
-        y_label_train = np.column_stack((eye_data["train_xPos"], eye_data["train_yPos"]))
-        y_label_validation = np.column_stack((eye_data["val_xPos"], eye_data["val_yPos"]))
 
         if not x_res or not y_res or not row_size or not col_size:
             train_data = [eye_data["train_left_eye"],
@@ -158,12 +176,12 @@ def load_metadata_eyeq(file_loc, val_only=False, gcnn=False, x_res=None, y_res=N
                       eye_data['train_right_eye'],
                       eye_data['train_face'],
                       eye_data["train_face_mask"],
-                      np.column_stack((eye_data["train_XCam"], eye_data["train_YCam"]))]
+                      y_label_train]
         validation_data = [eye_data["val_left_eye"],
                            eye_data['val_right_eye'],
                            eye_data['val_face'],
                            eye_data["val_face_mask"],
-                           np.column_stack((eye_data["val_XCam"], eye_data["val_YCam"]))]
+                           y_label_validation]
     if val_only:
         return validation_data
     else:
@@ -183,7 +201,44 @@ def load_metadata_npza(file_loc, val_only=False):
             validation_data (List): List of the validation values.
     """
 
-    eye_data = np.load(file_loc)
+    from feature_extraction.files.npz_archive import NPZAFile
+    from feature_extraction.core.iterators.dataset_split_iterator import DatasetSplitIterator
+
+    eye_data = {'train_left_eye': [], 'train_right_eye': [],
+                'train_face': [], 'train_face_mask': [],
+                'train_xPos': [], 'train_yPos': [],
+                'val_left_eye': [], 'val_right_eye': [],
+                'val_face': [], 'val_face_mask': [],
+                'val_xPos': [], 'val_yPos': []}
+
+    counter = 0
+    with NPZAFile(file_loc, remove=False) as targetFile:
+        targetFile.read()
+
+        iterator = DatasetSplitIterator(targetFile, trainSplit=0.7, validationSplit=0.3)
+
+        while iterator.hasNext():
+            counter += 1
+            print(counter, end='\r')
+            row = iterator.next()
+
+            prefix = ''
+            for key in row:
+                if 'train' in key:
+                    prefix = 'train'
+                elif 'val' in key:
+                    prefix = 'val'
+                break
+
+            eye_data[prefix + '_left_eye'] = row[prefix + "_left_eye"]
+            eye_data[prefix + '_right_eye'] = row[prefix + '_right_eye']
+            eye_data[prefix + '_face'] = row[prefix + '_face']
+            eye_data[prefix + "_face_mask"] = row[prefix + '_face_mask']
+            eye_data[prefix + '_xPos'] = row[prefix + '_XPts']
+            eye_data[prefix + '_yPos'] = row[prefix + '_YPts']
+
+    print('\n')
+
     train_data = [eye_data["train_left_eye"],
                   eye_data['train_right_eye'],
                   eye_data['train_face'],
@@ -260,9 +315,10 @@ def train(settings):
             train, validation = load_metadata_eyeq(settings.data, gcnn=True, x_res=x_res, y_res=y_res, row_size=row_size, col_size=col_size)
         else:
             train, validation = load_metadata_eyeq(settings.data)
-
     elif settings.data_arch.lower() == 'mit':
         train, validation = load_metadata_mit(settings.data)
+    elif settings.data_arch.lower() == 'npza':
+        train, validation = load_metadata_npza(settings.data)
 
     train = format_data(train)
     validation = format_data(validation)
@@ -275,9 +331,9 @@ def train(settings):
     elif settings.type.lower() == 'gcnn':
         if settings.gridRowSize:
             grid_size = settings.gridRowSize * settings.gridColSize
-            eyeQ = Gccn_classification(grid_size=grid_size, name=settings.progressFile)
+            eyeQ = Gcnn_classification(grid_size=grid_size, name=settings.progressFile)
         else:
-            eyeQ = Gccn_classification(name=settings.progressFile)
+            eyeQ = Gcnn_classification(name=settings.progressFile)
     else:
         types = 'CNN - Regression model, GCNN - Classification Model'
         err = 'Model input {} type was not found please try one of the following: {} '.format(settings.type, types)
@@ -310,9 +366,10 @@ def test(settings):
             y_res = settings.screenSizeY
             row_size = settings.gridRowSize
             col_size = settings.gridColSize
-            train, validation = load_metadata_eyeq(settings.data, gcnn=True, x_res=x_res, y_res=y_res, row_size=row_size, col_size=col_size)
+            train, validation = load_metadata_eyeq(settings.data, gcnn=True, x_res=x_res, y_res=y_res,
+                                                   row_size=row_size, col_size=col_size, datalessTest=settings.datalessTest)
         else:
-            train, validation = load_metadata_eyeq(settings.data)
+            train, validation = load_metadata_eyeq(settings.data, datalessTest=settings.datalessTest)
 
     elif settings.data_arch.lower() == 'mit':
         validation = load_metadata_mit(settings.data, val_only=True)
@@ -324,9 +381,9 @@ def test(settings):
     elif settings.type.lower() == 'gcnn':
         if settings.gridRowSize:
             grid_size = settings.gridRowSize * settings.gridColSize
-            eyeQ = Gccn_classification(grid_size=grid_size)
+            eyeQ = Gcnn_classification(grid_size=grid_size)
         else:
-            eyeQ = Gccn_classification()
+            eyeQ = Gcnn_classification()
     else:
         types = 'CNN - Regression model, GCNN - Classification Model'
         err = 'Model input {} type was not found please try one of the following: {} '.format(settings.type, types)

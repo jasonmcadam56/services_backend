@@ -30,7 +30,11 @@ class JSONRecorder(Callback):
 
     def __init__(self, name, model_loc):
         super(JSONRecorder, self).__init__()
-        self.name = "progress/{}.json".format(name)
+        realpath = os.path.dirname(os.path.realpath(__file__))
+        self.name = "{}{}progress{}{}.json".format(realpath, os.sep, os.sep, name)
+        if not os.path.exists('{}{}progress'.format(realpath, os.sep)):
+            os.makedirs('{}{}progress'.format(realpath, os.sep))
+
         self.model_loc = model_loc
 
     def on_train_begin(self, logs=None):
@@ -50,11 +54,6 @@ class JSONRecorder(Callback):
 
         self.stats = logs
 
-        prog_path = os.path.dirname('progress/')
-
-        if not os.path.exists(prog_path):
-            os.makedirs(prog_path)
-
         with open(self.name, 'w+') as prog_file:
             json.dump(progress_dict, prog_file)
 
@@ -68,7 +67,7 @@ class JSONRecorder(Callback):
             json.dump(final_dict, final_file)
 
 
-class Gccn_classification(object):
+class Gcnn_classification(object):
 
     def __init__(self, grid_size=24, name=''):
         '''
@@ -204,6 +203,7 @@ class Gccn_classification(object):
                            and continue training on it
         '''
         print("Now training using Grid Classification")
+        realpath = os.path.dirname(os.path.realpath(__file__))
         image_columns = 64
         image_rows = 64
         image_channel = 3
@@ -215,13 +215,13 @@ class Gccn_classification(object):
 
         if model_loc is "":
             gcnn = self.create_eye_tracking_model(image_columns, image_rows, image_channel, self.grid_size)
-            if not os.path.exists('eyeq/'):
-                os.makedirs('eyeq/')
+            model_loc = '{}{}eyeq{}gcnn_{}.h5'.format(realpath, os.sep, os.sep, name)
+            if not os.path.exists('{}{}/eyeq'.format(realpath, os.sep)):
+                os.makedirs('{}{}/eyeq'.format(realpath, os.sep))
             adam = Adam(lr=1e-4, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
             gcnn.compile(optimizer=adam,
                          loss='categorical_crossentropy',
                          metrics=['accuracy'])
-            model_loc = 'eyeq/gcnn_{}.h5'.format(name)
 
         else:
             model = load_model(model_loc)
@@ -237,11 +237,11 @@ class Gccn_classification(object):
                  verbose=1,
                  shuffle=True,
                  validation_data=(validation[:4], val_class_labels),
-                 callbacks=[ModelCheckpoint(model_loc, monitor="loss", verbose=1, save_best_only=True),
+                 callbacks=[ModelCheckpoint(model_loc, monitor="val_loss", verbose=1, save_best_only=True),
                             ProgbarLogger(),
                             TensorBoard(log_dir='grid/logs'),
                             ReduceLROnPlateau(),
-                            EarlyStopping(monitor="val_loss", patience=50),
+                            EarlyStopping(monitor="val_loss", patience=75),
                             JSONRecorder(self.name, model_loc)])
 
         gcnn.save(model_loc)
@@ -274,7 +274,7 @@ class Gccn_classification(object):
         for i, prob in enumerate(gcnn_prob):
             gcnn_pred.append(prob.argmax(axis=-1))
             print("\nGrid Pos {} with probability {}%".format(prob.argmax(axis=-1), (prob[prob.argmax(axis=-1)] * 100)))
-            print("Label: {}".format(y[i]))
+            print("Label: {}".format(int(y[i])))
 
             if prob.argmax(axis=-1) == int(y[i]):
                 correct_prediction += 1
@@ -289,12 +289,14 @@ class Gccn_classification(object):
         test_dict = {"pred": {"real": [int(i) for i in y], "model": gcnn_pred},
                      "stats": {"accuracy": total_prob, "loss": eval_loss}}
 
-        test_path = os.path.dirname('test_data/')
+        test_path = os.path.dirname(os.path.realpath(__file__)) + '{}{}'.format(os.sep, 'test_data')
 
         if not os.path.exists(test_path):
             os.makedirs(test_path)
 
-        with open("test_data/gcnn_test_{}.json".format(name), 'w') as test_json:
+        test_file_name = "gcnn_test_{}.json".format(name)
+
+        with open("{}{}{}".format(test_path, os.sep, test_file_name), 'w') as test_json:
             json.dump(str(test_dict), test_json)
 
         print("Model Probablity {}%".format(total_prob))

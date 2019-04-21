@@ -305,7 +305,6 @@ class Cnn_regression(object):
             progress_path = '{}{}progress{}{}.json'.format(realpath, os.sep, os.sep, self.progress_filename)
             if not os.path.exists('{}{}progress'.format(realpath, os.sep)):
                 os.makedirs('{}{}progress'.format(realpath, os.sep))
-
         with tensorflow.Session() as session:
             session.run(model_init)
 
@@ -329,6 +328,10 @@ class Cnn_regression(object):
             last_epoch = 1
             if self.re_train:
                 epoch_start = int(retrain_path.split('-')[1])
+            if self.progress:
+                progress_data = self.create_progress(epoch_start, epoch_start, epochs, 0, 0)
+                with open(progress_path, 'w+') as f:
+                    json.dump(progress_data, f)
 
             for epoch_number in range(epoch_start, epochs):
                 out_t_merg_err = bytes()
@@ -359,11 +362,6 @@ class Cnn_regression(object):
                     if self.verbose:
                         val_file_writer.add_summary(out_v_merge, epoch_number)
 
-                if self.progress:
-                    progress_data = self.create_progress(epoch_number, epoch_start, epochs, best_loss, loss_mase)
-                    with open(progress_path, 'w+') as f:
-                        json.dump(progress_data, f)
-
                 if loss_mase < best_loss:
                     if self.progress:
                         best_stats = self.create_progress(epoch_number, epoch_start, epochs, best_loss, loss_mase, write_update=False)
@@ -375,8 +373,11 @@ class Cnn_regression(object):
                     last_epoch = epoch_number
                 if self.verbose:
                     print('epoch {} done'.format(epoch_number))
-
-            print('Model run done with {} epochs'.format(epochs))
+                if self.progress:
+                    progress_data = self.create_progress(epoch_number, epoch_start, epochs, best_loss, loss_mase)
+                    with open(progress_path, 'w+') as f:
+                        json.dump(progress_data, f)
+                print('Model run done with {} epochs'.format(epochs))
 
             simple_save_path = '{}_{}_{}'.format(model_save_loc, last_epoch, 'model_simple_save')
 
