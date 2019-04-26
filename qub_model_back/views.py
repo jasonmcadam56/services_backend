@@ -10,7 +10,13 @@ from urllib3 import PoolManager
 from backend_service import models
 from qub_model_back.settings import EYETRACK_PROGRESS_DIR, DATASET_SAVE_LOCATION, EYETRACK_RESULTS_DIR
 from qub_model_back.tasks import app
-from backend_service.tasks import run
+from backend_service.tasks import run, run_prediction
+
+import cv2 as cv
+import numpy as np
+import base64
+import json
+
 
 import os
 
@@ -70,6 +76,70 @@ def worker(request, worker_id=None):
             revoke(worker_id, terminate=True)
 
     return HttpResponse('{}'.format(content), content_type='application/json')
+
+
+@csrf_exempt
+def predict(request, model_id):
+    """
+    :param request: django request object
+    :return: model predictions
+    """
+
+    if request.method != 'POST' or not model_id:
+        return HttpResponse(400)
+
+    model = models.Model.objects.get(id=model_id)
+    ds_save_loc = '/home/jason/Desktop/sample_dataset.npz'
+
+    image_data = json.loads(request.body.decode('utf-8'))
+
+    image_data['face_mask'] = cv.imdecode(np.fromstring(base64.b64decode(image_data['face_mask']), np.uint8),
+                                        cv.IMREAD_UNCHANGED)
+
+    output = dict()
+
+    for key, value in image_data.items():
+        if not ('rect' in key or 'mask' in key):
+            try:
+                rawImage = base64.b64decode(value)
+                image = cv.imdecode(np.fromstring(rawImage, np.uint8), cv.IMREAD_UNCHANGED)
+                output['{}_{}'.format('train', key)] = np.zeros((0, 0))
+                output['{}_{}'.format('val', key)] = np.array([image], np.uint8)
+            except:
+                print(key)
+
+    faceMask = np.zeros((25, 25), np.uint8)
+
+    for x in range(0, 25):
+        for y in range(0, 25):
+            faceMask[x][y] = round(int(image_data['face_mask'][x][y][0]) / 255.0)
+
+    output['val_face_mask'] = [faceMask]
+    output['train_face_mask'] = np.zeros((0, 0))
+    np.savez_compressed(ds_save_loc, **output)
+
+    if model.type == 'grid':
+        _type = 'gcnn'
+    else:
+        _type = 'cnn'
+
+    _args = parse_args({
+        'nn_type': _type,
+        'run_type': 'test',
+        'nn_model': model.model_path,
+        'dataset_location': ds_save_loc,
+        'name': model.name
+    })
+
+    _args.append('-dl')
+
+    _kwargs = {
+        'name': model.name,
+        'callback': 'http://localhost:5000/heatmap/'
+    }
+
+    run_prediction.apply_async(args=_args, kwargs=_kwargs)
+    return HttpResponse(200)
 
 
 def download_model(request, model_id):
@@ -256,7 +326,7 @@ def parse_args(data):
         args.append('--test')
         args.append('--type={}'.format(data.get('nn_type')))
         args.append('--modelLoc={}'.format(data.get('nn_model')))
-        args.append('--data={}'.format(data.get('dataset')))
+        args.append('--data={}'.format(data.get('dataset_location')))
         args.append('--name={}'.format(data.get('name')))
     elif data.get('run_type') == 'train':
         args.append('--train')

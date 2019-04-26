@@ -3,9 +3,12 @@ import json
 from EyeTrack import runner
 
 from backend_service.models import Model
-from qub_model_back.settings import EYETRACK_PROGRESS_DIR
+from qub_model_back.settings import EYETRACK_PROGRESS_DIR, EYETRACK_RESULTS_DIR
 from qub_model_back.tasks import app
+from urllib3 import PoolManager
 
+
+http = PoolManager()
 
 @app.task
 def run(*args, **kwargs):
@@ -41,6 +44,44 @@ def run(*args, **kwargs):
             print('ERROR: File not found:'.format(file_path))
 
     # train grided cnn
+
+
+@app.task
+def run_prediction(*args, **kwargs):
+
+    runner.main(args)
+
+    file_path = '{}/{}.json'.format(EYETRACK_RESULTS_DIR, kwargs['name'])
+
+    try:
+        with open(file_path, 'r') as f:
+            contents = f.read()
+            contents = json.loads(contents)
+            print(contents)
+
+    except FileNotFoundError as e:
+        print(e)
+
+    if '--type=cnn' in args:
+        point = contents['pred']['model'][0]
+        stats = contents['stats']
+        body = {
+            "point": {
+                "x": abs(point[0]),
+                "y": abs(point[1])
+            }
+            # "data":{
+            #     "accuracy": stats['accuracy'],
+            #     "error": stats["error"],
+            #     "mase": stats["mase"]
+            # }
+        }
+
+        body = json.dumps(body)
+
+        http.request('POST',
+                     'http://localhost:5000/heatmap/',
+                     body=body)
 
 
 @app.task

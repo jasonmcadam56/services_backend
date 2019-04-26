@@ -1,3 +1,7 @@
 from django.contrib import admin
+from backend_service.models import Model
 
-# Register your models here.
+class ModelAdmin(admin.ModelAdmin):
+    pass
+
+admin.site.register(Model, ModelAdmin)
