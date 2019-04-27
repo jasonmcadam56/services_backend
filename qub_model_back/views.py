@@ -194,11 +194,12 @@ def test_model(request, model_id):
     :return: HTTP 200
     :except Dataset or Model not found. Test files results inaccessible
     """
+    model = models.Model.objects.get(id=model_id)
+
     if request.method == 'POST':
         try:
             dataset_id = loads(request.body.decode('utf-8')).get('dataset_id')
 
-            model = models.Model.objects.get(id=model_id)
             dataset = models.DataSet.objects.get(id=dataset_id)
 
             _args = {
@@ -225,7 +226,11 @@ def test_model(request, model_id):
     elif request.method == 'GET':
 
         name = models.Model.objects.get(id=model_id).name
-        file = EYETRACK_RESULTS_DIR + name + '.json'
+
+        if model.type == models.Model.CNN:
+            file = '{}/{}.json'.format(EYETRACK_RESULTS_DIR, name)
+        elif model.type == models.Model.GCNN:
+            file = '{}/gcnn_test_{}.json'.format(EYETRACK_RESULTS_DIR, name)
 
         with open(file, 'r') as f:
             contents = f.read()
