@@ -79,12 +79,8 @@ def run_prediction(*args, **kwargs):
             "point": {
                 "x": abs(point[0]),
                 "y": abs(point[1])
-            }
-            # "data":{
-            #     "accuracy": stats['accuracy'],
-            #     "error": stats["error"],
-            #     "mase": stats["mase"]
-            # }
+            },
+            "data": stats
         }
 
         body = json.dumps(body)
@@ -96,12 +92,11 @@ def run_prediction(*args, **kwargs):
     if '--type=gcnn' in args:
 
         sector = contents['pred']['model']
+        stats = contents['stats']
+
         body = {
-            "sector": sector
-            # "data":{
-            #     "accuracy": stats['accuracy'],
-            #     "error": stats["error"],
-            # }
+            "sector": sector,
+            "data": stats
         }
 
         body = json.dumps(body)
