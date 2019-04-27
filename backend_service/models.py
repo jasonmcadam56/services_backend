@@ -20,7 +20,9 @@ class Model(models.Model):
     Model database representation. Holds model information that we need to
     store to faciliate functionality
     """
-    TYPE_CHOICES = [('CNN', 'cnn'), ('GRID', 'grid')]
+    CNN = 'CNN'
+    GCNN = 'GCNN'
+    TYPE_CHOICES = [(CNN, 'cnn'), (GCNN, 'gcnn')]
 
     BUILDING = 'BUILDING'
     COMPLETE = 'COMPLETE'

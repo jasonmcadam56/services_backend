@@ -118,13 +118,13 @@ def predict(request, model_id):
     output['train_face_mask'] = np.zeros((0, 0))
     np.savez_compressed(ds_save_loc, **output)
 
-    if model.type == 'grid':
-        _type = 'gcnn'
-    else:
-        _type = 'cnn'
+    if model.type == models.Model.CNN:
+        model_type = 'cnn'
+    elif model.type == models.Model.GCNN:
+        model_type = 'gcnn'
 
     _args = parse_args({
-        'nn_type': _type,
+        'nn_type': model_type,
         'run_type': 'test',
         'nn_model': model.model_path,
         'dataset_location': ds_save_loc,

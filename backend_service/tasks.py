@@ -49,15 +49,25 @@ def run(*args, **kwargs):
 @app.task
 def run_prediction(*args, **kwargs):
 
+    print(args)
+
     runner.main(args)
 
-    file_path = '{}/{}.json'.format(EYETRACK_RESULTS_DIR, kwargs['name'])
+    if '--type=cnn' in args:
+        file_path = '{}/{}.json'.format(EYETRACK_RESULTS_DIR, kwargs['name'])
+    if '--type=gcnn' in args:
+        file_path = '{}/gcnn_test_{}.json'.format(EYETRACK_RESULTS_DIR, kwargs['name'])
+
 
     try:
         with open(file_path, 'r') as f:
             contents = f.read()
-            contents = json.loads(contents)
-            print(contents)
+            if '--type=cnn' in args:
+                contents = json.loads(contents)
+            if '--type=gcnn' in args:
+                contents = contents.replace('\'', '"')[1:-1]
+                contents = json.loads(contents)
+
 
     except FileNotFoundError as e:
         print(e)
@@ -83,6 +93,22 @@ def run_prediction(*args, **kwargs):
                      'http://localhost:5000/heatmap/',
                      body=body)
 
+    if '--type=gcnn' in args:
+
+        sector = contents['pred']['model']
+        body = {
+            "sector": sector
+            # "data":{
+            #     "accuracy": stats['accuracy'],
+            #     "error": stats["error"],
+            # }
+        }
+
+        body = json.dumps(body)
+
+        http.request('POST',
+                     'http://localhost:5000/heatmap/',
+                     body=body)
 
 @app.task
 def debug(*args, **kwargs):
