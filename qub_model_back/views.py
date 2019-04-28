@@ -338,6 +338,8 @@ def parse_args(data):
         args.append('--type={}'.format(data.get('nn_type')))
         args.append('--data={}'.format(data.get('dataset_location')))
         args.append('-p={}'.format(data.get('name')))
+        if data.get('max_epoch'):
+            args.append('-e={}'.format(data.get('max_epoch')))
 
     args.append('-v')
 

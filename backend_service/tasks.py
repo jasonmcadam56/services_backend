@@ -49,8 +49,6 @@ def run(*args, **kwargs):
 @app.task
 def run_prediction(*args, **kwargs):
 
-    print(args)
-
     runner.main(args)
 
     if '--type=cnn' in args:

@@ -19,29 +19,32 @@ class ModelViewSet(viewsets.ModelViewSet):
         type = request.data.get('type')
         task = request.data.get('task')
         ds_id = request.data.get('dataset_id')
+        max_epoch = request.data.get('max_epoch')
 
         if len(models.Model.objects.filter(name=name)) > 0:
-            raise ValueError('Name \'{}\' already used. Model names must be unique'.format(name))
+            return Response('Name \'{}\' already used. Model names must be unique'.format(name))
 
         ds = models.DataSet.objects.get(id=ds_id)
 
         model = models.Model.objects.create(name=name, dataset=ds)
         model.save()
 
-        _args = parse_args({
+        _args = {
             'run_type': 'train',
             'nn_type': type,
             'dataset_location': ds.file_path,
             'name': name
             }
-        )
+
+        if max_epoch:
+            _args['max_epoch'] = max_epoch
 
         _kwargs = {
             "name": name,
             "task": task,
         }
 
-        run.apply_async(args=_args, kwargs=_kwargs)
+        run.apply_async(args=parse_args(_args), kwargs=_kwargs)
 
         return Response('Training: {}'.format(model))
 
