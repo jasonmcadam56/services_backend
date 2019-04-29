@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 setup(
     name='EyeTrack',
-    version='0.0.1',
+    version='1.0.0.',
     description='Eye tracking project from Lectrefy Inc.',
     author='Lectrefy Inc.',
     packages=find_packages(),

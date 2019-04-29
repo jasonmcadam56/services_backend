@@ -1,5 +1,5 @@
 '''
-This is used to train/test code for our eye tracking models, as we might end up with one or more
+xThis is used to train/test code for our eye tracking models, as we might end up with one or more
 types of models. So this file will support the different types as they are added into the project.
 
 Team: QUBMenInVens
@@ -138,8 +138,8 @@ def load_metadata_eyeq(file_loc, val_only=False, gcnn=False, x_res=None, y_res=N
         y_label_validation = np.column_stack((val_fake_x, val_fake_y))
     else:
         if gcnn:
-            y_label_train = np.column_stack((eye_data["train_XPos"], eye_data["train_YPos"]))
-            y_label_validation = np.column_stack((eye_data["val_XPos"], eye_data["val_YPos"]))
+            y_label_train = np.column_stack((eye_data["train_xPos"], eye_data["train_yPos"]))
+            y_label_validation = np.column_stack((eye_data["val_xPos"], eye_data["val_yPos"]))
         else:
             y_label_train = np.column_stack((eye_data["train_XCam"], eye_data["train_YCam"]))
             y_label_validation = np.column_stack((eye_data["val_XCam"], eye_data["val_YCam"]))
