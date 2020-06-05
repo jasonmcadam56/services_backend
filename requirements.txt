@@ -6,7 +6,7 @@ billiard==3.5.0.5
 celery==4.2.2
 constantly==15.1.0
 dj-database-url==0.5.0
-Django==2.1.7
+Django==2.2.13
 django-heroku==0.3.1
 -e dependencies/Model 
 djangorestframework==3.9.2
